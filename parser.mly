@@ -33,16 +33,8 @@ expression:
     { Bool false }
   | s = IDENT
     { Ident s }
-  | e1 = expression; STAR; e2 = expression
-    { Binop (Mul, e1, e2) }
-  | e1 = expression; SLASH; e2 = expression
-    { Binop (Div, e1, e2) }
-  | e1 = expression; PERCENT; e2 = expression
-    { Binop (Mod, e1, e2) }
-  | e1 = expression; PLUS; e2 = expression
-    { Binop (Add, e1, e2) }
-  | e1 = expression; MINUS; e2 = expression
-    { Binop (Sub, e1, e2) }
+  | e1 = expression; o = op; e2 = expression
+    { Binop (o, e1, e2) }
   | MINUS; e = expression %prec UMINUS_PREC
     { Unop (Minus, e) }
   | LEFTPAREN; e = expression; RIGHTPAREN
@@ -53,4 +45,10 @@ expression:
     { Len e }
   | e = expression; LEFTBRACKET; i = expression; RIGHTBRACKET
     { Brackets (e, i) }
+%inline op:
+  | STAR    { Mul }
+  | SLASH   { Div }
+  | PERCENT { Mod }
+  | PLUS    { Add }
+  | MINUS   { Sub }
 ;
