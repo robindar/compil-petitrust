@@ -14,6 +14,7 @@ rule token = parse
   | digit + as d { INT (int_of_string d) }
   | "true"     { TRUE }
   | "false"    { FALSE }
+  | ".len()"   { LENGTH }
   | ident as i { IDENT i }
   | '+'        { PLUS }
   | '-'        { MINUS }
@@ -22,4 +23,7 @@ rule token = parse
   | '%'        { PERCENT }
   | '('        { LEFTPAREN }
   | ')'        { RIGHTPAREN }
+  | '['        { LEFTBRACKET }
+  | ']'        { RIGHTBRACKET }
+  | '.'        { DOT }
   | eof        { EOF }

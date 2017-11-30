@@ -17,6 +17,9 @@ let rec print fmt = function
   | Ident i -> fprintf fmt "%s" i
   | Unop (op, e) -> fprintf fmt "(%a %a)" print_unop op print e
   | Binop (op, e1, e2) -> fprintf fmt "(%a %a %a)" print e1 print_binop op print e2
+  | Dot (e, s) -> fprintf fmt "(%a) . %s" print e s
+  | Len e -> fprintf fmt "(%a) .len()" print e
+  | Brackets (e, i) -> fprintf fmt "(%a) [%a]" print e print i
 
 let buf = Lexing.from_channel stdin
 let e = Parser.main Lexer.token buf

@@ -4,8 +4,10 @@
 %token <int> INT
 %token <string> IDENT
 %token EOF TRUE FALSE
-%token LEFTPAREN RIGHTPAREN
+%token LENGTH
+%token LEFTPAREN RIGHTPAREN LEFTBRACKET RIGHTBRACKET
 %token PLUS MINUS STAR SLASH PERCENT
+%token DOT
 %left PLUS MINUS
 %left STAR SLASH PERCENT
 
@@ -41,4 +43,10 @@ expression:
     { Unop (Minus, e) }
   | LEFTPAREN; e = expression; RIGHTPAREN
     { e }
+  | e = expression; DOT; i = IDENT
+    { Dot (e, i) }
+  | e = expression; LENGTH
+    { Len e }
+  | e = expression; LEFTBRACKET; i = expression; RIGHTBRACKET
+    { Brackets (e, i) }
 ;
