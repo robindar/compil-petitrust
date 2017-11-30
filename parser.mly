@@ -15,19 +15,30 @@
 %%
 
 main:
-  expression EOF { $1 }
+  e = expression; EOF { e }
 ;
 
 expression:
-  | INT                             { Int $1 }
-  | TRUE                            { Bool true }
-  | FALSE                           { Bool false }
-  | IDENT                           { Ident $1 }
-  | expression STAR expression      { Binop (Mul, $1, $3) }
-  | expression SLASH expression     { Binop (Div, $1, $3) }
-  | expression PERCENT expression   { Binop (Mod, $1, $3) }
-  | expression PLUS expression      { Binop (Add, $1, $3) }
-  | expression MINUS expression     { Binop (Sub, $1, $3) }
-  | MINUS expression                { Unop (Minus, $2) }
-  | LEFTPAREN expression RIGHTPAREN { $2 }
+  | i = INT
+     { Int i }
+  | TRUE
+    { Bool true }
+  | FALSE
+    { Bool false }
+  | s = IDENT
+    { Ident s }
+  | e1 = expression; STAR; e2 = expression
+    { Binop (Mul, e1, e2) }
+  | e1 = expression; SLASH; e2 = expression
+    { Binop (Div, e1, e2) }
+  | e1 = expression; PERCENT; e2 = expression
+    { Binop (Mod, e1, e1) }
+  | e1 = expression; PLUS; e2 = expression
+    { Binop (Add, e1, e2) }
+  | e1 = expression; MINUS; e2 = expression
+    { Binop (Sub, e1, e1) }
+  | MINUS; e = expression
+    { Unop (Minus, e) }
+  | LEFTPAREN; e = expression; RIGHTPAREN
+    { e }
 ;
