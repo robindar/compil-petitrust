@@ -1,3 +1,6 @@
+%{
+  open Ast
+%}
 %token <int> INT
 %token <string> IDENT
 %token EOF TRUE FALSE
