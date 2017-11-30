@@ -10,6 +10,10 @@
 %token DOT
 %left PLUS MINUS
 %left STAR SLASH PERCENT
+%nonassoc UMINUS_PREC
+%nonassoc LEFTBRACKET
+%nonassoc LENGTH
+%nonassoc DOT
 
 %start main
 %type <Ast.expr> main
@@ -39,7 +43,7 @@ expression:
     { Binop (Add, e1, e2) }
   | e1 = expression; MINUS; e2 = expression
     { Binop (Sub, e1, e2) }
-  | MINUS; e = expression
+  | MINUS; e = expression %prec UMINUS_PREC
     { Unop (Minus, e) }
   | LEFTPAREN; e = expression; RIGHTPAREN
     { e }
