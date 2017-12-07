@@ -4,10 +4,10 @@
 %token <int> INT
 %token <string> IDENT
 %token EOF TRUE FALSE
-%token LENGTH
-%token LEFTPAREN RIGHTPAREN LEFTBRACKET RIGHTBRACKET
+%token LENGTH STRUCT
+%token LEFTPAREN RIGHTPAREN LEFTBRACKET RIGHTBRACKET LEFTBRACE RIGHTBRACE
 %token PLUS MINUS STAR SLASH PERCENT
-%token DOT
+%token DOT COMMA COLON
 %left PLUS MINUS
 %left STAR SLASH PERCENT
 %nonassoc UMINUS_PREC
@@ -16,12 +16,14 @@
 %nonassoc DOT
 
 %start main
-%type <Ast.expr> main
+%type <Ast.typ> typ
+%type <Ast.ident * Ast.typ> ident_typ
+%type <Ast.decl> main
 
 %%
 
 main:
-  e = expression; EOF { e }
+  e = decl_struct; EOF { e }
 ;
 
 expression:
@@ -51,4 +53,19 @@ expression:
   | PERCENT { Mod }
   | PLUS    { Add }
   | MINUS   { Sub }
+;
+
+typ:
+  i = IDENT
+  { i }
+;
+
+ident_typ:
+  i = IDENT; COLON; t = typ
+  { (i, t) }
+;
+
+decl_struct:
+  STRUCT; i = IDENT; LEFTBRACE; l = separated_list(COMMA, ident_typ) ; RIGHTBRACE
+  { DeclStruct (i, l) }
 ;

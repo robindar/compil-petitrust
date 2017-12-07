@@ -15,6 +15,7 @@ rule token = parse
   | "true"     { TRUE }
   | "false"    { FALSE }
   | ".len()"   { LENGTH }
+  | "struct"   { STRUCT }
   | ident as i { IDENT i }
   | '+'        { PLUS }
   | '-'        { MINUS }
@@ -25,5 +26,9 @@ rule token = parse
   | ')'        { RIGHTPAREN }
   | '['        { LEFTBRACKET }
   | ']'        { RIGHTBRACKET }
+  | '{'        { LEFTBRACE }
+  | '}'        { RIGHTBRACE }
   | '.'        { DOT }
+  | ','        { COMMA }
+  | ':'        { COLON }
   | eof        { EOF }
