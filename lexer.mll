@@ -16,6 +16,12 @@ rule token = parse
   | "false"    { FALSE }
   | ".len()"   { LENGTH }
   | "struct"   { STRUCT }
+  | "fn"       { FN }
+  | "mut"      { MUT }
+  | "let"      { LET }
+  | "while"    { WHILE }
+  | "return"   { RETURN }
+  | "->"       { ARROW }
   | ident as i { IDENT i }
   | '+'        { PLUS }
   | '-'        { MINUS }
@@ -31,4 +37,5 @@ rule token = parse
   | '.'        { DOT }
   | ','        { COMMA }
   | ':'        { COLON }
+  | '='        { EQUAL }
   | eof        { EOF }

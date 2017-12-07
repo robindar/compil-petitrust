@@ -4,10 +4,12 @@
 %token <int> INT
 %token <string> IDENT
 %token EOF TRUE FALSE
-%token LENGTH STRUCT
+%token LENGTH STRUCT FN ARROW MUT LET
 %token LEFTPAREN RIGHTPAREN LEFTBRACKET RIGHTBRACKET LEFTBRACE RIGHTBRACE
 %token PLUS MINUS STAR SLASH PERCENT
-%token DOT COMMA COLON
+%token DOT COMMA COLON SEMICOLON
+%token EQUAL
+%token WHILE RETURN
 %left PLUS MINUS
 %left STAR SLASH PERCENT
 %nonassoc UMINUS_PREC
@@ -15,15 +17,18 @@
 %nonassoc LENGTH
 %nonassoc DOT
 
-%start main
+%start file
 %type <Ast.typ> typ
 %type <Ast.ident * Ast.typ> ident_typ
-%type <Ast.decl> main
+%type <Ast.decl> decl
+%type <Ast.bloc> bloc
+%type <Ast.file> file
 
 %%
 
-main:
-  e = decl_struct; EOF { e }
+file:
+  d = list(decl); EOF
+  { d }
 ;
 
 expression:
@@ -65,7 +70,39 @@ ident_typ:
   { (i, t) }
 ;
 
-decl_struct:
+mut:
+  m = option(MUT)
+  { (function | None -> false | _ -> true) m }
+;
+
+mut_ident_typ:
+| m = mut; i = IDENT; COLON; t = typ
+  { (m, i, t) }
+;
+
+decl:
   STRUCT; i = IDENT; LEFTBRACE; l = separated_list(COMMA, ident_typ) ; RIGHTBRACE
   { DeclStruct (i, l) }
+| FN; i = IDENT; LEFTPAREN; l = separated_list(COMMA, mut_ident_typ); RIGHTPAREN; t = option(ARROW; s = typ { s }); b = bloc
+  { DeclFun (i, l, t, b) }
+;
+
+bloc:
+  LEFTBRACE; l = instruction*; e = option(expression); RIGHTBRACE
+  { (l, e) }
+;
+
+instruction:
+  SEMICOLON
+  { Empty }
+| e = expression; SEMICOLON
+  { Expr e }
+| LET; m = mut; i = IDENT; EQUAL; e = expression; SEMICOLON
+  { Let (m, i, e) }
+| LET; m = mut; i = IDENT; EQUAL; i2 = IDENT; LEFTBRACE; l = list(a = IDENT; COLON; e = expression { (a, e) }); RIGHTBRACE; SEMICOLON
+  { LetStruct (m, i, i2, l) }
+| WHILE; e = expression; b = bloc
+  { While (e, b) }
+| RETURN; e = option(expression); SEMICOLON
+  { Return e }
 ;

@@ -17,3 +17,14 @@ type typ = ident
 
 type decl =
   | DeclStruct of ident * (ident * typ) list
+  | DeclFun of ident * (bool * ident * typ) list * typ option * bloc
+and bloc = instr list * expr option
+and instr =
+  | Empty
+  | Expr of expr
+  | Let of bool * ident * expr
+  | LetStruct of bool * ident * ident * (ident * expr) list
+  | While of expr * bloc
+  | Return of expr option
+
+type file = decl list
