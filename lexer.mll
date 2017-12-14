@@ -1,6 +1,8 @@
 {
   open Lexing
   open Parser
+
+  exception Lexing_error of string
 }
 
 let whitespace = [' ' '\t' '\n'] +
@@ -39,3 +41,7 @@ rule token = parse
   | ':'        { COLON }
   | '='        { EQUAL }
   | eof        { EOF }
+  | _ as c     { raise
+                  (Lexing_error
+                    ("illegal character: " ^ String.make 1 c)
+                  ) }
