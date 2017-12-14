@@ -61,6 +61,8 @@ expression:
     { Vec l }
   | PRINT; BANG; LEFTPAREN; s = STRING; RIGHTPAREN
     { Print s }
+  | b = bloc
+    { Bloc b }
 %inline op:
   | STAR    { Mul }
   | SLASH   { Div }
