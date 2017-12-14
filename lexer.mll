@@ -46,6 +46,7 @@ rule token = parse
   | '.'        { DOT }
   | ','        { COMMA }
   | ':'        { COLON }
+  | ';'        { SEMICOLON }
   | '='        { EQUAL }
   | '!'        { BANG }
   | '&'        { AMP }
