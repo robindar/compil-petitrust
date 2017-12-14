@@ -2,14 +2,17 @@
   open Ast
 %}
 %token <int> INT
+%token <string> STRING
 %token <string> IDENT
 %token EOF TRUE FALSE
 %token LENGTH STRUCT FN ARROW MUT LET
-%token LEFTPAREN RIGHTPAREN LEFTBRACKET RIGHTBRACKET LEFTBRACE RIGHTBRACE
+%token LEFTPAREN RIGHTPAREN LEFTBRACKET RIGHTBRACKET LEFTBRACE RIGHTBRACE LEFTANGLE RIGHTANGLE
 %token PLUS MINUS STAR SLASH PERCENT
 %token DOT COMMA COLON SEMICOLON
 %token EQUAL
 %token WHILE RETURN
+%token BANG AMP
+%token VEC PRINT
 %left PLUS MINUS
 %left STAR SLASH PERCENT
 %nonassoc UMINUS_PREC
@@ -52,6 +55,12 @@ expression:
     { Len e }
   | e = expression; LEFTBRACKET; i = expression; RIGHTBRACKET
     { Brackets (e, i) }
+  | i = IDENT; LEFTPAREN; l = separated_list(COMMA, expression); RIGHTPAREN
+    { Paren (i, l) }
+  | VEC; BANG; LEFTBRACKET; l = separated_list(COMMA, expression); RIGHTBRACKET
+    { Vec l }
+  | PRINT; BANG; LEFTPAREN; s = STRING; RIGHTPAREN
+    { Print s }
 %inline op:
   | STAR    { Mul }
   | SLASH   { Div }
