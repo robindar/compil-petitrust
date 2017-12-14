@@ -87,11 +87,6 @@ decl:
   { DeclFun (i, l, t, b) }
 ;
 
-bloc:
-  LEFTBRACE; l = instruction*; e = option(expression); RIGHTBRACE
-  { (l, e) }
-;
-
 instruction:
   SEMICOLON
   { Empty }
@@ -101,8 +96,20 @@ instruction:
   { Let (m, i, e) }
 | LET; m = mut; i = IDENT; EQUAL; i2 = IDENT; LEFTBRACE; l = list(a = IDENT; COLON; e = expression { (a, e) }); RIGHTBRACE; SEMICOLON
   { LetStruct (m, i, i2, l) }
-| WHILE; e = expression; b = bloc
-  { While (e, b) }
 | RETURN; e = option(expression); SEMICOLON
   { Return e }
+| WHILE; e = expression; b = bloc
+  { While (e, b) }
+;
+
+bloc_body:
+  i = instruction; b = bloc_body
+  { let l, e = b in (i::l, e) }
+| e = option(expression)
+  { ([], e) }
+;
+
+bloc:
+  LEFTBRACE; b = bloc_body; RIGHTBRACE
+  { b }
 ;
