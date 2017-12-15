@@ -34,6 +34,10 @@ rule token = parse
   | "print"    { PRINT }
   | "->"       { ARROW }
   | ident as i { IDENT i }
+  | "=="       { EQ }
+  | "!="       { NEQ }
+  | "<="       { LEQ }
+  | ">="       { GEQ }
   | '+'        { PLUS }
   | '-'        { MINUS }
   | '*'        { STAR }

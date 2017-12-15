@@ -8,6 +8,7 @@
 %token LENGTH STRUCT FN ARROW MUT LET
 %token LEFTPAREN RIGHTPAREN LEFTBRACKET RIGHTBRACKET LEFTBRACE RIGHTBRACE LEFTANGLE RIGHTANGLE
 %token PLUS MINUS STAR SLASH PERCENT
+%token EQ NEQ LEQ GEQ
 %token DOT COMMA COLON SEMICOLON
 %token EQUAL
 %token WHILE RETURN
@@ -68,6 +69,13 @@ expression:
   | PERCENT { Mod }
   | PLUS    { Add }
   | MINUS   { Sub }
+  | EQ      { Eq  }
+  | NEQ     { Neq }
+  | LEQ     { Leq }
+  | GEQ     { Geq }
+  | EQUAL   { Equal }
+  | LEFTANGLE  { Lt }
+  | RIGHTANGLE { Gt }
 ;
 
 typ:
