@@ -51,6 +51,14 @@ let () =
     if !parse_only then exit 0;
     (* Move on *)
   with
+    | Lexer.Lexing_error s ->
+	(*report (lexeme_start_p lb, lexeme_end_p lb);*)
+	eprintf "lexical error: %s@." s;
+	exit 1
+    | Parser.Error ->
+	(*report (lexeme_start_p lb, lexeme_end_p lb);*)
+	eprintf "syntax error@.";
+	exit 1
     | e ->
 	eprintf "Anomaly: %s\n@." (Printexc.to_string e);
 	exit 2
