@@ -34,6 +34,8 @@ rule token = parse
   | "print"    { PRINT }
   | "->"       { ARROW }
   | ident as i { IDENT i }
+  | "&&"       { AND }
+  | "||"       { OR }
   | "=="       { EQ }
   | "!="       { NEQ }
   | "<="       { LEQ }

@@ -8,6 +8,7 @@
 %token LENGTH STRUCT FN ARROW MUT LET
 %token LEFTPAREN RIGHTPAREN LEFTBRACKET RIGHTBRACKET LEFTBRACE RIGHTBRACE LEFTANGLE RIGHTANGLE
 %token PLUS MINUS STAR SLASH PERCENT
+%token AND OR
 %token EQ NEQ LEQ GEQ
 %token DOT COMMA COLON SEMICOLON
 %token EQUAL
@@ -69,6 +70,8 @@ expression:
   | PERCENT { Mod }
   | PLUS    { Add }
   | MINUS   { Sub }
+  | AND     { And }
+  | OR      { Or  }
   | EQ      { Eq  }
   | NEQ     { Neq }
   | LEQ     { Leq }

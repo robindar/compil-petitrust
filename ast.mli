@@ -1,5 +1,5 @@
 type binop_type = Add | Sub | Mul | Div | Mod
-  | Equal | Eq | Neq | Leq | Geq | Lt | Gt
+  | Equal | Eq | Neq | Leq | Geq | Lt | Gt | And | Or
 type unop_type  = Minus
 
 type ident = string
