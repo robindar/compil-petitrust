@@ -23,7 +23,7 @@ rule token = parse
   | _string as s { STRING s }
   | "true"     { TRUE }
   | "false"    { FALSE }
-  | ".len()"   { LENGTH }
+  | "len"      { LENGTH }
   | "struct"   { STRUCT }
   | "fn"       { FN }
   | "mut"      { MUT }

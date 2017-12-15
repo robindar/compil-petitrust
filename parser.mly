@@ -17,7 +17,6 @@
 %left STAR SLASH PERCENT
 %nonassoc UMINUS_PREC
 %nonassoc LEFTBRACKET
-%nonassoc LENGTH
 %nonassoc DOT
 
 %start file
@@ -51,7 +50,7 @@ expression:
     { e }
   | e = expression; DOT; i = IDENT
     { Dot (e, i) }
-  | e = expression; LENGTH
+  | e = expression; DOT; LENGTH; LEFTPAREN; RIGHTPAREN
     { Len e }
   | e = expression; LEFTBRACKET; i = expression; RIGHTBRACKET
     { Brackets (e, i) }
