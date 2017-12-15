@@ -2,6 +2,9 @@ type binop_type = Add | Sub | Mul | Div | Mod
 type unop_type  = Minus
 
 type ident = string
+type _string = string
+
+type typ = ident
 
 type expr =
   | Int of int
@@ -12,10 +15,11 @@ type expr =
   | Dot of expr * ident
   | Len of expr
   | Brackets of expr * expr
-
-type typ = ident
-
-type decl =
+  | Paren of ident * expr list
+  | Vec of expr list
+  | Print of _string
+  | Bloc of bloc
+and decl =
   | DeclStruct of ident * (ident * typ) list
   | DeclFun of ident * (bool * ident * typ) list * typ option * bloc
 and bloc = instr list * expr option
