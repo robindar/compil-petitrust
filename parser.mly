@@ -131,7 +131,9 @@ instruction:
   { Expr e }
 | LET; m = mut; i = IDENT; EQUAL; e = expression; SEMICOLON
   { Let (m, i, e) }
-| LET; m = mut; i = IDENT; EQUAL; i2 = IDENT; LEFTBRACE; l = list(a = IDENT; COLON; e = expression { (a, e) }); RIGHTBRACE; SEMICOLON
+| LET; m = mut; i = IDENT; EQUAL; i2 = IDENT; LEFTBRACE;
+    l = separated_list(COMMA, a = IDENT; COLON; e = expression { (a, e) });
+  RIGHTBRACE; SEMICOLON
   { LetStruct (m, i, i2, l) }
 | RETURN; e = option(expression); SEMICOLON
   { Return e }
