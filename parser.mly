@@ -93,7 +93,13 @@ expression:
 
 typ:
   i = IDENT
-  { i }
+  { Ident i }
+| i = IDENT; LEFTANGLE; t = typ; RIGHTANGLE
+  { TypedIdent (i, t) }
+| AMP; t = typ
+  { AddressOf t }
+| AMP; MUT; t = typ
+  { AddressOfMut t }
 ;
 
 ident_typ:

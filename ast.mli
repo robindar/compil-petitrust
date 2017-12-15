@@ -5,7 +5,11 @@ type unop_type  = Minus | Bang | Star | Amp | AmpMut
 type ident = string
 type _string = string
 
-type typ = ident
+type typ =
+  | Ident of ident
+  | TypedIdent of ident * typ
+  | AddressOf of typ
+  | AddressOfMut of typ
 
 type expr =
   | Int of int
