@@ -15,6 +15,10 @@
 %token WHILE RETURN
 %token BANG AMP
 %token VEC PRINT
+%right EQUAL
+%left AND
+%left OR
+%nonassoc EQ NEQ RIGHTANGLE LEFTANGLE GEQ LEQ
 %left PLUS MINUS
 %left STAR SLASH PERCENT
 %nonassoc UMINUS_PREC
