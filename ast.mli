@@ -1,6 +1,6 @@
 type binop_type = Add | Sub | Mul | Div | Mod
   | Equal | Eq | Neq | Leq | Geq | Lt | Gt | And | Or
-type unop_type  = Minus
+type unop_type  = Minus | Bang | Star | Amp | AmpMut
 
 type ident = string
 type _string = string

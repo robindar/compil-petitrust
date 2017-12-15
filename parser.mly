@@ -21,7 +21,7 @@
 %nonassoc EQ NEQ RIGHTANGLE LEFTANGLE GEQ LEQ
 %left PLUS MINUS
 %left STAR SLASH PERCENT
-%nonassoc UMINUS_PREC
+%nonassoc UNARY_PREC
 %nonassoc LEFTBRACKET
 %nonassoc DOT
 
@@ -50,8 +50,8 @@ expression:
     { Ident s }
   | e1 = expression; o = op; e2 = expression
     { Binop (o, e1, e2) }
-  | MINUS; e = expression %prec UMINUS_PREC
-    { Unop (Minus, e) }
+  | u = unary_op; e = expression %prec UNARY_PREC
+    { Unop (u, e) }
   | LEFTPAREN; e = expression; RIGHTPAREN
     { e }
   | e = expression; DOT; i = IDENT
@@ -83,6 +83,12 @@ expression:
   | EQUAL   { Equal }
   | LEFTANGLE  { Lt }
   | RIGHTANGLE { Gt }
+%inline unary_op:
+  | MINUS   { Minus  }
+  | BANG    { Bang   }
+  | STAR    { Star   }
+  | AMP     { Amp    }
+  | AMP MUT { AmpMut }
 ;
 
 typ:
