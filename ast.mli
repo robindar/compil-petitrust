@@ -35,5 +35,6 @@ and instr =
   | LetStruct of bool * ident * ident * (ident * expr) list
   | While of expr * bloc
   | Return of expr option
+  | If of expr * bloc * bloc
 
 type file = decl list

@@ -32,6 +32,8 @@ rule token = parse
   | "return"   { RETURN }
   | "vec"      { VEC }
   | "print"    { PRINT }
+  | "if"       { IF }
+  | "else"     { ELSE }
   | "->"       { ARROW }
   | ident as i { IDENT i }
   | "&&"       { AND }

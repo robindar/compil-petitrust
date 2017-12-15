@@ -12,6 +12,7 @@
 %token EQ NEQ LEQ GEQ
 %token DOT COMMA COLON SEMICOLON
 %token EQUAL
+%token IF ELSE
 %token WHILE RETURN
 %token BANG AMP
 %token VEC PRINT
@@ -139,6 +140,16 @@ instruction:
   { Return e }
 | WHILE; e = expression; b = bloc
   { While (e, b) }
+| i = if_structure
+  { i }
+
+if_structure:
+  IF; e = expression; b = bloc
+  { If (e, b, ([], None)) }
+| IF; e = expression; bi = bloc; ELSE be = bloc
+  { If (e, bi, be) }
+| IF; e = expression; bi = bloc; ELSE i = if_structure
+  { If (e, bi, ([i], None)) }
 ;
 
 bloc_body:
