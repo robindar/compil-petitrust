@@ -16,7 +16,7 @@ type expr =
   | Dot of expr * ident
   | Len of expr
   | Brackets of expr * expr
-  | Paren of ident * expr list
+  | FunCall of ident * expr list
   | Vec of expr list
   | Print of _string
   | Bloc of bloc

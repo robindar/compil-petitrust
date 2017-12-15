@@ -61,7 +61,7 @@ expression:
   | e = expression; LEFTBRACKET; i = expression; RIGHTBRACKET
     { Brackets (e, i) }
   | i = IDENT; LEFTPAREN; l = separated_list(COMMA, expression); RIGHTPAREN
-    { Paren (i, l) }
+    { FunCall (i, l) }
   | VEC; BANG; LEFTBRACKET; l = separated_list(COMMA, expression); RIGHTBRACKET
     { Vec l }
   | PRINT; BANG; LEFTPAREN; s = STRING; RIGHTPAREN
