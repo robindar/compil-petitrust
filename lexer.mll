@@ -20,7 +20,7 @@ let whitespace = [' ' '\t']
 let newline = '\n'
 let digit = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
-let _char = [^ '"' '\\' ] | ('\\' '\\') | ('\\' 'n')
+let _char = [^ '"' '\\' ] | ( '\\' '"') | ('\\' '\\') | ('\\' 'n')
 let _string = '"' _char * '"'
 
 let length = "len" whitespace* "(" whitespace* ")"
