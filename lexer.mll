@@ -5,7 +5,8 @@
   exception Lexing_error of string
 }
 
-let whitespace = [' ' '\t' '\n'] +
+let whitespace = [' ' '\t'] +
+let newline = '\n'
 let digit = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 let _char = [^ '"' '\\' ] | ('\\' '\\') | ('\\' 'n')
@@ -17,6 +18,7 @@ let ident = alpha ( alpha | digit | '_' ) *
 
 rule token = parse
   whitespace { token lexbuf }
+  | newline    { new_line lexbuf; token lexbuf }
   | single_line_comment { token lexbuf }
   | "/*"       { comment 1 lexbuf }
   | digit + as d { INT (int_of_string d) }
@@ -71,4 +73,5 @@ and comment n = parse
   | "/*"       { comment (n+1) lexbuf }
   | "*/"       { if n = 1 then token lexbuf else comment (n-1) lexbuf }
   | eof        { raise (Lexing_error "Missing terminating \"*/\" in comment") }
+  | newline    { new_line lexbuf; comment n lexbuf }
   | _  { comment n lexbuf }

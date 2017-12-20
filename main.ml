@@ -1,5 +1,6 @@
 open Ast
 open Format
+open Lexing
 
 
 let usage = "usage: prustc [options] file.rs"
@@ -21,6 +22,11 @@ let file =
   Arg.parse spec set_file usage;
   match !file with Some f -> f | None -> Arg.usage spec usage; exit 1
 
+let report (b,e) =
+  let l = b.pos_lnum in
+  let fc = b.pos_cnum - b.pos_bol + 1 in
+  let lc = e.pos_cnum - b.pos_bol + 1 in
+  eprintf "File \"%s\", line %d, characters %d-%d:\n" file l fc lc
 
 let () =
   let c = open_in file in
@@ -32,11 +38,11 @@ let () =
     (* Move on *)
   with
     | Lexer.Lexing_error s ->
-	(*report (lexeme_start_p lb, lexeme_end_p lb);*)
+	report (lexeme_start_p lb, lexeme_end_p lb);
 	eprintf "lexical error: %s@." s;
 	exit 1
     | Parser.Error ->
-	(*report (lexeme_start_p lb, lexeme_end_p lb);*)
+	report (lexeme_start_p lb, lexeme_end_p lb);
 	eprintf "syntax error@.";
 	exit 1
     | e ->
