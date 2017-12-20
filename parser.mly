@@ -57,15 +57,15 @@ expression:
     { e }
   | e = expression; DOT; i = IDENT
     { Dot (e, i) }
-  | e = expression; DOT; LENGTH; LEFTPAREN; RIGHTPAREN
+  | e = expression; DOT; LENGTH;
     { Len e }
   | e = expression; LEFTBRACKET; i = expression; RIGHTBRACKET
     { Brackets (e, i) }
   | i = IDENT; LEFTPAREN; l = separated_list(COMMA, expression); RIGHTPAREN
     { FunCall (i, l) }
-  | VEC; BANG; LEFTBRACKET; l = separated_list(COMMA, expression); RIGHTBRACKET
+  | VEC; LEFTBRACKET; l = separated_list(COMMA, expression); RIGHTBRACKET
     { Vec l }
-  | PRINT; BANG; LEFTPAREN; s = STRING; RIGHTPAREN
+  | PRINT; LEFTPAREN; s = STRING; RIGHTPAREN
     { Print s }
   | b = bloc
     { Bloc b }

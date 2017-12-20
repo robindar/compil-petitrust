@@ -3,41 +3,46 @@
   open Parser
 
   exception Lexing_error of string
+
+  let ident_or_keyword =
+    let populate table = (fun (kw, token) -> Hashtbl.add table kw token) in
+    let reserved_keywords = Hashtbl.create 32 in
+    List.iter (populate reserved_keywords)
+      ["true", TRUE; "false", FALSE;
+       "let", LET; "struct", STRUCT; "fn", FN;
+       "if", IF; "else", ELSE; "while", WHILE;
+       "mut", MUT; "return", RETURN];
+    function str -> try Hashtbl.find reserved_keywords str with _ -> IDENT str
+
 }
 
-let whitespace = [' ' '\t'] +
+let whitespace = [' ' '\t']
 let newline = '\n'
 let digit = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 let _char = [^ '"' '\\' ] | ('\\' '\\') | ('\\' 'n')
 let _string = '"' _char * '"'
 
+let length = "len" whitespace* "(" whitespace* ")"
+let print = "print" whitespace* "!"
+let vec = "vec" whitespace* "!"
+
 let single_line_comment = "//" [^ '\n' ] *
 
 let ident = alpha ( alpha | digit | '_' ) *
 
 rule token = parse
-  whitespace { token lexbuf }
+  whitespace+ { token lexbuf }
   | newline    { new_line lexbuf; token lexbuf }
   | single_line_comment { token lexbuf }
   | "/*"       { comment 1 lexbuf }
   | digit + as d { INT (int_of_string d) }
   | _string as s { STRING s }
-  | "true"     { TRUE }
-  | "false"    { FALSE }
-  | "len"      { LENGTH }
-  | "struct"   { STRUCT }
-  | "fn"       { FN }
-  | "mut"      { MUT }
-  | "let"      { LET }
-  | "while"    { WHILE }
-  | "return"   { RETURN }
-  | "vec"      { VEC }
-  | "print"    { PRINT }
-  | "if"       { IF }
-  | "else"     { ELSE }
+  | length     { LENGTH }
+  | print      { PRINT }
+  | vec        { VEC }
+  | ident as i { ident_or_keyword i }
   | "->"       { ARROW }
-  | ident as i { IDENT i }
   | "&&"       { AND }
   | "||"       { OR }
   | "=="       { EQ }
