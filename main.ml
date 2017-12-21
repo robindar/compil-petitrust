@@ -6,10 +6,14 @@ open Lexing
 let usage = "usage: prustc [options] file.rs"
 
 let parse_only = ref false
+let type_only  = ref false
+let no_asm     = ref false
 
 let spec =
   [
     "--parse-only", Arg.Set parse_only, "  stop after parsing";
+    "--type-only",  Arg.Set type_only,  "  stop after typing";
+    "--no-asm",     Arg.Set no_asm,     "  stop after borrow checking";
   ]
 
 let file =
@@ -35,6 +39,7 @@ let () =
     let f = Parser.file Lexer.token lb in
     close_in c;
     if !parse_only then exit 0;
+    if !type_only then exit 0;
     (* Move on *)
   with
     | Lexer.Lexing_error s ->
