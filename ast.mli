@@ -5,11 +5,11 @@ type unop_type  = Minus | Bang | Star | Amp | AmpMut
 type ident = string
 type _string = string
 
-type typ =
+type _type=
   | Ident of ident
-  | TypedIdent of ident * typ
-  | AddressOf of typ
-  | AddressOfMut of typ
+  | TypedIdent of ident * _type
+  | AddressOf of _type
+  | AddressOfMut of _type
 
 type expr =
   | Int of int
@@ -25,8 +25,8 @@ type expr =
   | Print of _string
   | Bloc of bloc
 and decl =
-  | DeclStruct of ident * (ident * typ) list
-  | DeclFun of ident * (bool * ident * typ) list * typ option * bloc
+  | DeclStruct of ident * (ident * _type) list
+  | DeclFun of ident * (bool * ident * _type) list * _type option * bloc
 and bloc = instr list * expr option
 and instr =
   | Empty

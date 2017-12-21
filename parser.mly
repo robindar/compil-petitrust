@@ -27,8 +27,8 @@
 %nonassoc DOT
 
 %start file
-%type <Ast.typ> typ
-%type <Ast.ident * Ast.typ> ident_typ
+%type <Ast._type> _type
+%type <Ast.ident * Ast._type> ident_type
 %type <Ast.decl> decl
 %type <Ast.bloc> bloc
 %type <Ast.file> file
@@ -92,19 +92,19 @@ expression:
   | AMP MUT { AmpMut }
 ;
 
-typ:
+_type:
   i = IDENT
   { Ident i }
-| i = IDENT; LEFTANGLE; t = typ; RIGHTANGLE
+| i = IDENT; LEFTANGLE; t = _type; RIGHTANGLE
   { TypedIdent (i, t) }
-| AMP; t = typ
+| AMP; t = _type
   { AddressOf t }
-| AMP; MUT; t = typ
+| AMP; MUT; t = _type
   { AddressOfMut t }
 ;
 
-ident_typ:
-  i = IDENT; COLON; t = typ
+ident_type:
+  i = IDENT; COLON; t = _type
   { (i, t) }
 ;
 
@@ -113,15 +113,15 @@ mut:
   { (function | None -> false | _ -> true) m }
 ;
 
-mut_ident_typ:
-| m = mut; i = IDENT; COLON; t = typ
+mut_ident_type:
+| m = mut; i = IDENT; COLON; t = _type
   { (m, i, t) }
 ;
 
 decl:
-  STRUCT; i = IDENT; LEFTBRACE; l = separated_list(COMMA, ident_typ) ; RIGHTBRACE
+  STRUCT; i = IDENT; LEFTBRACE; l = separated_list(COMMA, ident_type) ; RIGHTBRACE
   { DeclStruct (i, l) }
-| FN; i = IDENT; LEFTPAREN; l = separated_list(COMMA, mut_ident_typ); RIGHTPAREN; t = option(ARROW; s = typ { s }); b = bloc
+| FN; i = IDENT; LEFTPAREN; l = separated_list(COMMA, mut_ident_type); RIGHTPAREN; t = option(ARROW; s = _type { s }); b = bloc
   { DeclFun (i, l, t, b) }
 ;
 
