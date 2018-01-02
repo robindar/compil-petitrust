@@ -47,6 +47,8 @@ let type_of_expr = function
   | TDot (_, _, t) | TLen (_, t) | TBrackets (_, _, t)
   | TFunCall (_, _, t) | TVec (_, t) | TPrint (_, t)
   | TBloc (_, t) -> t
+let type_of_bloc = function
+  | _, _, t -> t
 
 let type_keywords = [ "i32", Int32; "()", Unit; "bool", Boolean]
 let rec expr_type_of_type (x : Ast._type) = match x with
@@ -150,7 +152,16 @@ let type_file file =
         let t = List.map (fun (id, te) -> (id, type_of_expr te)) tl in
         let env2 = decl_struct env1 s t in
         TLetStruct (b, s, i, tl, Unit), env2
-    | While _ -> assert false
+    | While (e, b) ->
+        let te, _ = type_expr env e in
+        if check_type (type_of_expr te) Boolean then
+          begin
+            let tb, _ = type_bloc env b in
+            if check_type (type_of_bloc tb) Unit then
+              TWhile (te, tb, Unit), env
+            else raise (Typing_error "Expected unit bloc as while argument")
+          end
+        else raise (Typing_error "Expected boolean condition for while bloc")
     | Return _ -> assert false
     | If _ -> assert false
   in let typed_file, _ = fold_env type_decl empty_env file
