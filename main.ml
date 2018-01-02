@@ -37,8 +37,9 @@ let () =
   let lb = Lexing.from_channel c in
   try
     let f = Parser.file Lexer.token lb in
-    close_in c;
-    if !parse_only then exit 0;
+    let () = close_in c in
+    if !parse_only then exit 0 else
+    let typed_file = Typer.type_file f in
     if !type_only then exit 0;
     (* Move on *)
   with
@@ -50,6 +51,9 @@ let () =
 	report (lexeme_start_p lb, lexeme_end_p lb);
 	eprintf "syntax error@.";
 	exit 1
+    | Typer.Typing_error s ->
+        eprintf "Typing error: %s@." s;
+        exit 1
     | e ->
 	eprintf "Anomaly: %s\n@." (Printexc.to_string e);
 	exit 2
