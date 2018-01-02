@@ -96,9 +96,30 @@ let type_file file =
         and te2, _ = type_expr env e2
         in let r = check_args (binop_type b) (List.map type_of_expr [te1; te2])
         in TBinop (b, te1, te2, r), env
-    | Dot (e, i) -> assert false
-    | Len e -> assert false
-    | Brackets (eo, ei) -> assert false
+    | Dot (e, i) ->
+        let te = fst (type_expr env e) in
+        begin
+          match type_of_expr te with
+          | Struct s -> TDot (te, i, struct_type env s i), env
+          | _ -> raise (Typing_error "Cannot call . on non-struct type")
+        end
+    | Len e ->
+        let te = fst (type_expr env e) in
+        begin
+          match type_of_expr te with
+          | Vect t -> TLen (te, Int32), env
+          | _ -> raise (Typing_error "Cannot call len on non-vec type")
+        end
+    | Brackets (eo, ei) ->
+        let teo = fst (type_expr env eo) in
+        let tei = fst (type_expr env ei) in
+        begin
+          match type_of_expr teo with
+          | Vect t -> if check_type (type_of_expr tei) Int32
+                      then TBrackets (teo, tei, t), env
+                      else raise (Typing_error "Expected i32 argument to [] call")
+          | _ -> raise (Typing_error "Cannot call [] on non-vec type")
+        end
     | FunCall (f, arg) ->
         let targ = List.map (fun x -> fst (type_expr env x)) arg
         in let r = check_args (fun_type env f) (List.map type_of_expr targ)
