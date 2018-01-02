@@ -162,7 +162,20 @@ let type_file file =
             else raise (Typing_error "Expected unit bloc as while argument")
           end
         else raise (Typing_error "Expected boolean condition for while bloc")
-    | Return _ -> assert false
-    | If _ -> assert false
+    | Return eo ->
+        let teo = begin
+          match eo with
+          | None -> None
+          | Some e -> Some (fst (type_expr env e))
+        end in TReturn (teo, Unit), env
+    | If (e, b1, b2) ->
+        let te, _  = type_expr env e  in
+        let tb1, _ = type_bloc env b1 in
+        let tb2, _ = type_bloc env b2 in
+        if (check_type (type_of_expr te) Boolean) then
+          if (check_type (type_of_bloc tb1) (type_of_bloc tb2)) then
+            let t = type_of_bloc tb1 in TIf (te, tb1, tb2, t), env
+          else raise (Typing_error "Expected same type for both blocs")
+        else raise (Typing_error "Expected boolean condition for if bloc")
   in let typed_file, _ = fold_env type_decl empty_env file
   in typed_file
