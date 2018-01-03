@@ -95,9 +95,19 @@ let type_file file =
           with Not_found -> raise (Typing_error "Undefined litteral")
         end
     | Unop (u, e) ->
-        let te, _ = type_expr env e in
-        let r = check_args (unop_type u) [(type_of_expr te)] in
-        TUnop(u, te, r), env
+        begin
+          let te, _ = type_expr env e in
+          let r = match u with
+          | Star -> begin
+                    match type_of_expr te with
+                    | Ref (_, t) -> t
+                    | _ -> raise (Typing_error "Expected reference type")
+                    end
+          | Amp -> Ref (false, type_of_expr te)
+          | AmpMut -> Ref (true, type_of_expr te)
+          | _ -> check_args (unop_type u) [(type_of_expr te)]
+          in TUnop(u, te, r), env
+        end
     | Binop (b, e1, e2) ->
         let te1, _ = type_expr env e1
         and te2, _ = type_expr env e2
