@@ -9,6 +9,7 @@ let empty_env = (Env.empty, Env.empty, Env.empty)
 
 let var_type (env, _, _) i = Env.find i env
 let fun_type (_, env, _) f = Env.find f env
+let is_struct (_, _, env) s = Env.mem s env
 let struct_type (_, _, env) s i = Env.find i (Env.find s env)
 
 let decl_var (env, f_env, s_env) v t = (Env.add v t env, f_env, s_env)
@@ -51,23 +52,26 @@ let type_of_bloc = function
   | _, _, t -> t
 
 let type_keywords = [ "i32", Int32; "()", Unit; "bool", Boolean]
-let rec expr_type_of_type (x : Ast._type) = match x with
+let rec expr_type_of_type env (x : Ast._type) = match x with
   | Ident i ->
     begin
       try
         List.assoc i type_keywords
-      with Not_found -> raise (Typing_error "Unkown type")
+      with Not_found ->
+        if is_struct env i then
+          Struct i
+        else raise (Typing_error "Unkown type")
     end
   | TypedIdent (i, t) ->
       if i = "Vec" then
-        Vect (expr_type_of_type t)
+        Vect (expr_type_of_type env t)
       else raise (Typing_error "Unknown bracket type")
-  | AddressOfMut t -> Ref (true, expr_type_of_type t)
-  | AddressOf t ->    Ref (false, expr_type_of_type t)
+  | AddressOfMut t -> Ref (true, expr_type_of_type env t)
+  | AddressOf t ->    Ref (false, expr_type_of_type env t)
 
-let expr_type_of_type_option = function
-  | None -> Unit (* TODO: Guess return type instead of this *)
-  | Some t -> expr_type_of_type t
+let expr_type_of_type_option env = function
+  | None -> Unit
+  | Some t -> expr_type_of_type env t
 
 let type_file file =
   let fold_env typer env =
@@ -77,10 +81,11 @@ let type_file file =
   let rec type_decl env = function
     | DeclStruct (i, l) -> TDeclStruct (i, l, Unit), env
     | DeclFun (i, l, t, b) ->
-        let ret_type = expr_type_of_type_option t in
-        let arg_type = List.map (fun (x,y,z) -> expr_type_of_type z) l in
+        let ret_type = expr_type_of_type_option env t in
+        let arg_type = List.map (fun (x,y,z) -> expr_type_of_type env z) l in
         let n_env = decl_fun env i (arg_type, ret_type) in
-        TDeclFun (i, l, t, fst (type_bloc env b), Unit), n_env
+        let n_arg = List.map (fun (x,y,z) -> (x, y, expr_type_of_type env z)) l in
+        TDeclFun (i, n_arg, ret_type, fst (type_bloc env b), Unit), n_env
   and type_expr env = function
     | Int i -> TInt (i, Int32), env
     | Bool b -> TBool (b, Boolean), env
