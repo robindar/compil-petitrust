@@ -199,8 +199,10 @@ let type_file file =
     | Print s -> TPrint (s, Unit), env
     | Bloc b -> let tb, _ = type_bloc env b in TBloc (tb, type_of_bloc tb), env
   and type_bloc env (instr_list, expr) =
-    let te = match expr with |None -> None |Some e -> Some (fst (type_expr env e)) in
-    (fst (fold_env type_instr env instr_list), te, Unit), env
+    let te, r = match expr with
+      | None -> None, Unit
+      | Some e -> let t,_ = type_expr env e in Some t, type_of_expr t
+    in (fst (fold_env type_instr env instr_list), te, r), env
   and type_instr env = function
     | Empty -> TEmpty Unit, env
     | Expr e -> let te = fst (type_expr env e) in
