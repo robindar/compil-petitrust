@@ -42,6 +42,25 @@ let check_args (t_arg, ret) arg =
     | (_, _) -> raise (Typing_error "Incompatible types")
   in check_rec (t_arg,arg)
 
+let check_structure_instanciation (_, _, env) s decl =
+  try
+    let vars = Env.find s env in
+    let fold_decl map = function
+      | (id, _) when Env.mem id map ->
+          raise (Typing_error ("Duplicate variable in struct : " ^ id))
+      | (id, _) when not (Env.mem id vars) ->
+          raise (Typing_error ("Unexpected variable in struct : " ^ id))
+      | (id, t) when not (check_type t (Env.find id vars)) ->
+          raise (Typing_error ("Incompatible types for variable : " ^ id))
+      | (id, t) -> Env.add id t map in
+    let decl_map = List.fold_left fold_decl Env.empty decl in
+    let check_presence id = function
+      | _ when not (Env.mem id decl_map) ->
+          raise (Typing_error ("Missing variable in struct : " ^ id))
+      | _ -> () in
+    Env.iter check_presence vars
+  with Not_found -> raise (Typing_error ("Unkown structure : " ^ s))
+
 let type_of_expr = function
     TInt (_, t) | TBool (_, t) | TIdent (_, t)
   | TUnop (_, _, t) | TBinop (_, _, _, t)
@@ -79,7 +98,10 @@ let type_file file =
       let tx, n_env = typer env x in (tx::l, n_env))
     ([], env) in
   let rec type_decl env = function
-    | DeclStruct (i, l) -> TDeclStruct (i, l, Unit), env
+    | DeclStruct (i, l) ->
+        let n_arg = List.map (fun (x,y) -> (x, expr_type_of_type env y)) l in
+        let n_env = decl_struct env i n_arg in
+        TDeclStruct (i, n_arg, Unit), n_env
     | DeclFun (i, l, t, b) ->
         let ret_type = expr_type_of_type_option env t in
         let arg_type = List.map (fun (x,y,z) -> expr_type_of_type env z) l in
@@ -161,12 +183,12 @@ let type_file file =
         let te, _ = type_expr env e in
         let t = type_of_expr te in
         TLet(b, i, te, Unit), (decl_var env i t)
-    | LetStruct (b, s, i, l) ->
+    | LetStruct (b, i, s, l) ->
         let tl = List.map (fun (id, ex) -> (id, fst (type_expr env ex))) l in
         let env1 = decl_var env i (Struct s) in
         let t = List.map (fun (id, te) -> (id, type_of_expr te)) tl in
-        let env2 = decl_struct env1 s t in
-        TLetStruct (b, s, i, tl, Unit), env2
+        check_structure_instanciation env s t;
+        TLetStruct (b, s, i, tl, Unit), env1
     | While (e, b) ->
         let te, _ = type_expr env e in
         if check_type (type_of_expr te) Boolean then

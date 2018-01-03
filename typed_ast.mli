@@ -23,7 +23,7 @@ type typed_expr =
   | TPrint of _string * expr_type
   | TBloc of typed_bloc * expr_type
 and typed_decl =
-  | TDeclStruct of ident * (ident * _type) list * expr_type
+  | TDeclStruct of ident * (ident * expr_type) list * expr_type
   | TDeclFun of ident * (bool * ident * expr_type) list * expr_type * typed_bloc * expr_type
 and typed_bloc = typed_instr list * typed_expr option * expr_type
 and typed_instr =
