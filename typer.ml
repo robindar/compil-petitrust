@@ -44,34 +44,6 @@ let binop_type = function
   | Eq | Neq | Leq | Geq
   | Lt | Gt | And | Or -> [Boolean; Boolean], Boolean
 
-let check_type t a = (t = a)
-
-let check_args (t_arg, ret) arg =
-  let rec check_rec = function
-    | ([], []) -> ret
-    | (t::tq, a::ta) when check_type t a -> check_rec (tq,ta)
-    | (_, _) -> raise (Typing_error "Incompatible types")
-  in check_rec (t_arg,arg)
-
-let check_structure_instanciation (_, _, env) s decl =
-  try
-    let vars = Env.find s env in
-    let fold_decl map = function
-      | (id, _) when Env.mem id map ->
-          raise (Typing_error ("Duplicate variable in struct : " ^ id))
-      | (id, _) when not (Env.mem id vars) ->
-          raise (Typing_error ("Unexpected variable in struct : " ^ id))
-      | (id, t) when not (check_type t (Env.find id vars)) ->
-          raise (Typing_error ("Incompatible types for variable : " ^ id))
-      | (id, t) -> Env.add id t map in
-    let decl_map = List.fold_left fold_decl Env.empty decl in
-    let check_presence id = function
-      | _ when not (Env.mem id decl_map) ->
-          raise (Typing_error ("Missing variable in struct : " ^ id))
-      | _ -> () in
-    Env.iter check_presence vars
-  with Not_found -> raise (Typing_error ("Unkown structure : " ^ s))
-
 let type_of_expr = function
     TInt (_, t) | TBool (_, t) | TIdent (_, t)
   | TUnop (_, _, t) | TBinop (_, _, _, t)
@@ -103,6 +75,60 @@ let expr_type_of_type_option env = function
   | None -> Unit
   | Some t -> expr_type_of_type env t
 
+let check_type t a = (t = a)
+
+let check_args (t_arg, ret) arg =
+  let rec check_rec = function
+    | ([], []) -> ret
+    | (t::tq, a::ta) when check_type t a -> check_rec (tq,ta)
+    | (_, _) -> raise (Typing_error "Incompatible types")
+  in check_rec (t_arg,arg)
+
+let check_structure_instanciation (_, _, env) s decl =
+  try
+    let vars = Env.find s env in
+    let fold_decl map = function
+      | (id, _) when Env.mem id map ->
+          raise (Typing_error ("Duplicate variable in struct : " ^ id))
+      | (id, _) when not (Env.mem id vars) ->
+          raise (Typing_error ("Unexpected variable in struct : " ^ id))
+      | (id, t) when not (check_type t (Env.find id vars)) ->
+          raise (Typing_error ("Incompatible types for variable : " ^ id))
+      | (id, t) -> Env.add id t map in
+    let decl_map = List.fold_left fold_decl Env.empty decl in
+    let check_presence id = function
+      | _ when not (Env.mem id decl_map) ->
+          raise (Typing_error ("Missing variable in struct : " ^ id))
+      | _ -> () in
+    Env.iter check_presence vars
+  with Not_found -> raise (Typing_error ("Unkown structure : " ^ s))
+
+let rec check_return require_ret (instr, _, ty) ret =
+  let rec check_instr def = function
+    | [] -> def
+    | (TReturn (t, _))::_ ->
+      begin
+      match t with
+      | None -> check_type Unit ret
+      | Some u -> check_type (type_of_expr u) ret
+      end
+    | (TIf (_, t, e, _))::l ->
+      if (check_return true t ret) && (check_return true e ret) then
+        true
+      else
+        check_instr def l
+    | (TWhile (_, b, _))::l ->
+        (check_return false b ret) && (check_instr def l)
+    | _::l -> check_instr def l in
+  if check_type ty ret then
+    check_instr (not require_ret) instr
+  else
+    if check_type ty Unit then
+      check_instr false instr
+    else false
+
+let check_function_return = check_return false
+
 let type_file file =
   let fold_env typer env =
     List.fold_left (fun (l, env) x ->
@@ -130,7 +156,11 @@ let type_file file =
           let arg_type = List.map (fun (x,y,z) -> expr_type_of_type env z) l in
           let n_env = decl_fun env i (arg_type, ret_type) in
           let n_arg = List.map (fun (x,y,z) -> (x, y, expr_type_of_type env z)) l in
-          TDeclFun (i, n_arg, ret_type, fst (type_bloc env b), Unit), n_env
+          let tb, _ = type_bloc env b in
+          if check_function_return tb ret_type then
+            TDeclFun (i, n_arg, ret_type, tb, Unit), n_env
+          else
+            raise (Typing_error "Unproper return type for function bloc")
   and type_expr env = function
     | Int i -> TInt (i, Int32), env
     | Bool b -> TBool (b, Boolean), env
