@@ -21,6 +21,15 @@ let decl_struct (v_env, f_env, env) s l =
               Env.empty l in
   (v_env, f_env, Env.add s s_env env)
 
+let has_duplicate_idents l =
+  try
+    let add env = function
+      | (x,_) when Env.mem x env -> raise Exit
+      | (x,_) -> Env.add x () env in
+    let _ = List.fold_left add Env.empty l in
+    false
+  with Exit -> true
+
 let unop_type = function
   | Minus  -> [Int32], Int32
   | Bang   -> [Boolean], Boolean
@@ -100,15 +109,21 @@ let type_file file =
     ([], env) in
   let rec type_decl env = function
     | DeclStruct (i, l) ->
-        let n_arg = List.map (fun (x,y) -> (x, expr_type_of_type env y)) l in
-        let n_env = decl_struct env i n_arg in
-        TDeclStruct (i, n_arg, Unit), n_env
+        if has_duplicate_idents l then
+          raise (Typing_error ("Duplicate variable name in struct : " ^ i))
+        else
+          let n_arg = List.map (fun (x,y) -> (x, expr_type_of_type env y)) l in
+          let n_env = decl_struct env i n_arg in
+          TDeclStruct (i, n_arg, Unit), n_env
     | DeclFun (i, l, t, b) ->
-        let ret_type = expr_type_of_type_option env t in
-        let arg_type = List.map (fun (x,y,z) -> expr_type_of_type env z) l in
-        let n_env = decl_fun env i (arg_type, ret_type) in
-        let n_arg = List.map (fun (x,y,z) -> (x, y, expr_type_of_type env z)) l in
-        TDeclFun (i, n_arg, ret_type, fst (type_bloc env b), Unit), n_env
+        if has_duplicate_idents (List.map (fun (_,x,y) -> (x,y)) l) then
+          raise (Typing_error ("Duplicate variable name in function : " ^ i))
+        else
+          let ret_type = expr_type_of_type_option env t in
+          let arg_type = List.map (fun (x,y,z) -> expr_type_of_type env z) l in
+          let n_env = decl_fun env i (arg_type, ret_type) in
+          let n_arg = List.map (fun (x,y,z) -> (x, y, expr_type_of_type env z)) l in
+          TDeclFun (i, n_arg, ret_type, fst (type_bloc env b), Unit), n_env
   and type_expr env = function
     | Int i -> TInt (i, Int32), env
     | Bool b -> TBool (b, Boolean), env
