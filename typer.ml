@@ -8,6 +8,7 @@ module Env = Map.Make(String)
 let empty_env = (Env.empty, Env.empty, Env.empty)
 
 let var_type (env, _, _) i = Env.find i env
+let is_fun (_, env, _) f = Env.mem f env
 let fun_type (_, env, _) f = Env.find f env
 let is_struct (_, _, env) s = Env.mem s env
 let has_variable (_, _, env) s i = Env.mem i (Env.find s env)
@@ -109,6 +110,9 @@ let type_file file =
     ([], env) in
   let rec type_decl env = function
     | DeclStruct (i, l) ->
+      if is_struct env i then
+        raise (Typing_error ("Redefinition of struct : " ^ i))
+      else
         if has_duplicate_idents l then
           raise (Typing_error ("Duplicate variable name in struct : " ^ i))
         else
@@ -116,6 +120,9 @@ let type_file file =
           let n_env = decl_struct env i n_arg in
           TDeclStruct (i, n_arg, Unit), n_env
     | DeclFun (i, l, t, b) ->
+      if is_fun env i then
+        raise (Typing_error ("Redefinition of function : " ^ i))
+      else
         if has_duplicate_idents (List.map (fun (_,x,y) -> (x,y)) l) then
           raise (Typing_error ("Duplicate variable name in function : " ^ i))
         else
