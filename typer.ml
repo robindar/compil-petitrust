@@ -216,6 +216,7 @@ let type_file file =
           | _ -> raise (Typing_error "Cannot call [] on non-vec type")
         end
     | FunCall (f, arg) ->
+        if not (is_fun env f) then raise (Typing_error ("Undefined function : " ^ f)) else
         let targ = List.map (fun x -> fst (type_expr env x)) arg
         in let r = check_args (fun_type env f) (List.map type_of_expr targ)
         in TFunCall(f, targ, r), env
