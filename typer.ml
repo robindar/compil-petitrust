@@ -10,6 +10,7 @@ let empty_env = (Env.empty, Env.empty, Env.empty)
 let var_type (env, _, _) i = Env.find i env
 let fun_type (_, env, _) f = Env.find f env
 let is_struct (_, _, env) s = Env.mem s env
+let has_variable (_, _, env) s i = Env.mem i (Env.find s env)
 let struct_type (_, _, env) s i = Env.find i (Env.find s env)
 
 let decl_var (env, f_env, s_env) v t = (Env.add v t env, f_env, s_env)
@@ -139,7 +140,10 @@ let type_file file =
         let te = fst (type_expr env e) in
         begin
           match type_of_expr te with
-          | Struct s -> TDot (te, i, struct_type env s i), env
+          | Struct s ->
+              if has_variable env s i then
+                TDot (te, i, struct_type env s i), env
+              else raise (Typing_error ("Unkown variable " ^ i ^ " for struct " ^ s))
           | _ -> raise (Typing_error "Cannot call . on non-struct type")
         end
     | Len e ->
