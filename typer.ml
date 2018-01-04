@@ -40,8 +40,8 @@ let unop_type = function
 let binop_type = function
   | Add | Sub | Mul | Div | Mod -> [Int32; Int32], Int32
   | Equal -> assert false
-  | Eq | Neq | Leq | Geq
-  | Lt | Gt | And | Or -> [Boolean; Boolean], Boolean
+  | Eq | Neq | Leq | Geq | Lt | Gt -> [Int32; Int32], Boolean
+  | And | Or -> [Boolean; Boolean], Boolean
 
 let type_of_expr = function
     TInt (_, _, t) | TBool (_, _, t) | TIdent (_, _, t)
