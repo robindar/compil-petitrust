@@ -265,7 +265,7 @@ let type_file file =
           (fun pt nt -> if check_type pt nt then nt
             else raise (Typing_error "Incompatible vector elements"))
           Neutral (List.map type_of_expr te) in
-        TVec (te, t), env
+        TVec (te, Vect t), env
     | Print s -> TPrint (s, Unit), env
     | Bloc b -> let tb, _ = type_bloc env b in TBloc (tb, type_of_bloc tb), env
   and type_bloc env (instr_list, expr) =
