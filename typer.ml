@@ -76,14 +76,18 @@ let expr_type_of_type_option env = function
   | None -> Unit
   | Some t -> expr_type_of_type env t
 
-let check_type t a = (t = Neutral) || (t = a)
+let rec check_type t a = match t, a with
+  | Neutral, _ -> true
+  | Ref (b1, e1), Ref (b2, e2) -> (b1 || (not b2)) && check_type e1 e2
+  | Vect t1, Vect t2 -> check_type t1 t2
+  | _, _ -> t = a
 
 let check_args (t_arg, ret) arg =
   let rec check_rec = function
     | ([], []) -> ret
-    | (t::tq, a::ta) when check_type t a -> check_rec (tq,ta)
+    | (a::aq, t::tq) when check_type a t -> check_rec (aq,tq)
     | (_, _) -> raise (Typing_error "Incompatible types")
-  in check_rec (t_arg,arg)
+  in check_rec (arg, t_arg)
 
 let check_structure_instanciation (_, _, env) s decl =
   try
