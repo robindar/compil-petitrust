@@ -76,7 +76,7 @@ let expr_type_of_type_option env = function
   | None -> Unit
   | Some t -> expr_type_of_type env t
 
-let check_type t a = (t = a)
+let check_type t a = (t = Neutral) || (t = a)
 
 let check_args (t_arg, ret) arg =
   let rec check_rec = function
