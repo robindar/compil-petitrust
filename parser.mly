@@ -28,7 +28,7 @@
 
 %start file
 %type <Ast._type> _type
-%type <Ast.ident * Ast._type> ident_type
+%type <Ast.ident * Ast.location * Ast._type> ident_type
 %type <Ast.decl> decl
 %type <Ast.bloc> bloc
 %type <Ast.file> file
@@ -62,7 +62,7 @@ expression:
   | e = expression; LEFTBRACKET; i = expression; RIGHTBRACKET
     { Brackets (e, i, ($startpos, $endpos)) }
   | i = IDENT; LEFTPAREN; l = separated_list(COMMA, expression); RIGHTPAREN
-    { FunCall (i, l, ($startpos, $endpos)) }
+    { FunCall ((i, ($startpos(i), $endpos(i))), l, ($startpos, $endpos)) }
   | VEC; LEFTBRACKET; l = separated_list(COMMA, expression); RIGHTBRACKET
     { Vec (l, ($startpos, $endpos)) }
   | PRINT; LEFTPAREN; s = STRING; RIGHTPAREN
@@ -105,7 +105,7 @@ _type:
 
 ident_type:
   i = IDENT; COLON; t = _type
-  { (i, t) }
+  { (i, ($startpos(i), $endpos(i)), t) }
 ;
 
 mut:
@@ -115,15 +115,19 @@ mut:
 
 mut_ident_type:
 | m = mut; i = IDENT; COLON; t = _type
-  { (m, i, t) }
+  { (m, i, ($startpos(i), $endpos(i)), t) }
 ;
 
 decl:
   STRUCT; i = IDENT; LEFTBRACE; l = separated_list(COMMA, ident_type) ; RIGHTBRACE
-  { DeclStruct (i, l, ($startpos, $endpos)) }
+  { DeclStruct ((i, ($startpos(i), $endpos(i))), l, ($startpos, $endpos)) }
 | FN; i = IDENT; LEFTPAREN; l = separated_list(COMMA, mut_ident_type); RIGHTPAREN; t = option(ARROW; s = _type { s }); b = bloc
-  { DeclFun (i, l, t, b, ($startpos, $endpos)) }
+  { DeclFun ((i, ($startpos(i), $endpos(i))), l, t, b, ($startpos, $endpos)) }
 ;
+
+struct_arg:
+  a = IDENT; COLON; e = expression
+  { (a, ($startpos(a), $endpos(a)), e) }
 
 instruction:
   SEMICOLON
@@ -131,11 +135,13 @@ instruction:
 | e = expression; SEMICOLON
   { Expr (e, ($startpos, $endpos)) }
 | LET; m = mut; i = IDENT; EQUAL; e = expression; SEMICOLON
-  { Let (m, i, e, ($startpos, $endpos)) }
-| LET; m = mut; i = IDENT; EQUAL; i2 = IDENT; LEFTBRACE;
-    l = separated_list(COMMA, a = IDENT; COLON; e = expression { (a, e) });
+  { Let (m, (i, ($startpos(i), $endpos(i))), e, ($startpos, $endpos)) }
+| LET; m = mut; i1 = IDENT; EQUAL; i2 = IDENT; LEFTBRACE;
+    l = separated_list(COMMA, struct_arg);
   RIGHTBRACE; SEMICOLON
-  { LetStruct (m, i, i2, l, ($startpos, $endpos)) }
+  { LetStruct (m, (i1, ($startpos(i1), $endpos(i1))),
+                  (i2, ($startpos(i2), $endpos(i2))),
+                  l, ($startpos, $endpos)) }
 | RETURN; e = option(expression); SEMICOLON
   { Return (e, ($startpos, $endpos)) }
 | WHILE; e = expression; b = bloc

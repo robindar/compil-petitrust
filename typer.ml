@@ -19,18 +19,16 @@ let decl_var (env, f_env, s_env) v t mut = (Env.add v (t, mut) env, f_env, s_env
 let decl_fun (v_env, env, s_env) f t = (v_env, Env.add f t env, s_env)
 let decl_struct (v_env, f_env, env) s l =
   let s_env = List.fold_left
-              (fun e (i,t) -> Env.add i t e)
+              (fun e (i,_,t) -> Env.add i t e)
               Env.empty l in
   (v_env, f_env, Env.add s s_env env)
 
-let has_duplicate_idents l =
-  try
-    let add env = function
-      | (x,_) when Env.mem x env -> raise Exit
-      | (x,_) -> Env.add x () env in
-    let _ = List.fold_left add Env.empty l in
-    false
-  with Exit -> true
+let check_duplicate_idents l =
+  let add env = function
+    | (x, l, _) when Env.mem x env ->
+      raise (Typing_error (l, "Duplicate variable name in definition : " ^ x))
+    | (x, l, _) -> Env.add x () env in
+  let _ = List.fold_left add Env.empty l in ()
 
 let unop_type = function
   | Minus  -> [Int32], Int32
@@ -53,6 +51,12 @@ let type_of_expr = function
   | TBloc (_, _, t) -> t
 let type_of_bloc = function
   | _, _, _, t -> t
+let location_of_expr = function
+    TInt (_, l, _) | TBool (_, l, _) | TIdent (_, l, _)
+  | TUnop (_, _, l, _) | TBinop (_, _, _, l, _)
+  | TDot (_, _, l, _) | TLen (_, l, _) | TBrackets (_, _, l, _)
+  | TFunCall (_, _, l, _) | TVec (_, l, _) | TPrint (_, l, _)
+  | TBloc (_, l, _) -> l
 
 let type_keywords = [ "i32", Int32; "()", Unit; "bool", Boolean]
 let rec expr_type_of_type env loc (x : Ast._type) = match x with
@@ -63,7 +67,7 @@ let rec expr_type_of_type env loc (x : Ast._type) = match x with
       with Not_found ->
         if is_struct env i then
           Struct i
-        else raise (Typing_error (loc, "Unkown type"))
+        else raise (Typing_error (loc, "Unknown type"))
     end
   | TypedIdent (i, t) ->
       if i = "Vec" then
@@ -169,34 +173,30 @@ let type_file file =
       let tx, n_env = typer env x in (tx::l, n_env))
     ([], env) in
   let rec type_decl env = function
-    | DeclStruct (i, l, loc) ->
+    | DeclStruct ((i, i_loc), l, loc) ->
       if is_struct env i then
-        raise (Typing_error (loc, "Redefinition of struct : " ^ i))
+        raise (Typing_error (i_loc, "Redefinition of struct " ^ i))
       else
-        if has_duplicate_idents l then
-          raise (Typing_error (loc, "Duplicate variable name in struct : " ^ i))
-        else
-          let n_arg = List.map (fun (x,y) -> (x, expr_type_of_type env loc y)) l in
-          let n_env = decl_struct env i n_arg in
-          TDeclStruct (i, n_arg, loc, Unit), n_env
-    | DeclFun (i, l, t, b, loc) ->
+        check_duplicate_idents l;
+        let n_arg = List.map (fun (x,l,y) -> (x, l, expr_type_of_type env l y)) l in
+        let n_env = decl_struct env i n_arg in
+        TDeclStruct ((i, i_loc), n_arg, loc, Unit), n_env
+    | DeclFun ((i, i_loc), l, t, b, loc) ->
       if is_fun env i then
-        raise (Typing_error (loc, "Redefinition of function : " ^ i))
+        raise (Typing_error (i_loc, "Redefinition of function " ^ i))
       else
-        if has_duplicate_idents (List.map (fun (_,x,y) -> (x,y)) l) then
-          raise (Typing_error (loc, "Duplicate variable name in function : " ^ i))
+        check_duplicate_idents (List.map (fun (_,x,l,y) -> (x,l,y)) l);
+        let ret_type = expr_type_of_type_option env loc t in
+        let arg_type = List.map (fun (_,_,l,z) -> expr_type_of_type env l z) l in
+        let n_env = decl_fun env i (arg_type, ret_type) in
+        let n_arg = List.map (fun (x,y,l,z) -> (x, y, l, expr_type_of_type env loc z)) l in
+        let n_env_args = List.fold_left
+          (fun _env (b, x, _, t) -> decl_var _env x t b) n_env n_arg in
+        let tb, _ = type_bloc n_env_args b in
+        if check_function_return tb ret_type then
+          TDeclFun ((i,i_loc), n_arg, ret_type, tb, loc, Unit), n_env
         else
-          let ret_type = expr_type_of_type_option env loc t in
-          let arg_type = List.map (fun (x,y,z) -> expr_type_of_type env loc z) l in
-          let n_env = decl_fun env i (arg_type, ret_type) in
-          let n_arg = List.map (fun (x,y,z) -> (x, y, expr_type_of_type env loc z)) l in
-          let n_env_args = List.fold_left
-            (fun _env (b, x, t) -> decl_var _env x t b) n_env n_arg in
-          let tb, _ = type_bloc n_env_args b in
-          if check_function_return tb ret_type then
-            TDeclFun (i, n_arg, ret_type, tb, loc, Unit), n_env
-          else
-            raise (Typing_error (loc, "Unproper return type for function bloc"))
+          raise (Typing_error (loc, "Unproper return type for function bloc"))
   and type_expr env = function
     | Int (i, loc) -> TInt (i, loc, Int32), env
     | Bool (b, loc) -> TBool (b, loc, Boolean), env
@@ -232,12 +232,13 @@ let type_file file =
         let te1, _ = type_expr env e1
         and te2, _ = type_expr env e2 in
         if b = Equal then
+          let l = location_of_expr te1 in
           if not (type_of_expr te1 = type_of_expr te2) then
-            raise (Typing_error (loc, "Type mismatch in assignement"))
+            raise (Typing_error (l, "Type mismatch in assignement"))
           else if not (is_l_value te1) then
-            raise (Typing_error (loc, "Expected l_value for assignement"))
+            raise (Typing_error (l, "Expected l_value for assignement"))
           else if not (is_mut_value env te1) then
-            raise (Typing_error (loc, "Expected mutable value for assignement"))
+            raise (Typing_error (l, "Expected mutable value for assignement"))
           else
             TBinop (b, te1, te2, loc, Unit), env
         else
@@ -248,33 +249,41 @@ let type_file file =
         begin
           match type_of_expr te with
           | Struct s ->
-              if has_variable env s i then
+              if not (is_struct env s) then
+                raise (Typing_error (location_of_expr te, "Unknown structure "^s))
+              else if not (has_variable env s i) then
+                raise (Typing_error (loc, "Unknown variable "^i^" for struct "^s))
+              else
                 TDot (te, i, loc, struct_type env s i), env
-              else raise (Typing_error (loc, "Unkown variable " ^ i ^ " for struct " ^ s))
-          | _ -> raise (Typing_error (loc, "Cannot call . on non-struct type"))
+          | _ -> raise (Typing_error (location_of_expr te,
+                                      "Cannot call . on non-struct type"))
         end
     | Len (e, loc) ->
         let te = auto_deref loc (fst (type_expr env e)) in
         begin
           match type_of_expr te with
           | Vect t -> TLen (te, loc, Int32), env
-          | _ -> raise (Typing_error (loc, "Cannot call len on non-vec type"))
+          | _ -> raise (Typing_error (location_of_expr te,
+                                      "Cannot call len on non-vec type"))
         end
     | Brackets (eo, ei, loc) ->
         let teo = auto_deref loc (fst (type_expr env eo)) in
         let tei = fst (type_expr env ei) in
         begin
           match type_of_expr teo with
-          | Vect t -> if check_type (type_of_expr tei) Int32
-                      then TBrackets (teo, tei, loc, t), env
-                      else raise (Typing_error (loc, "Expected i32 argument to [] call"))
-          | _ -> raise (Typing_error (loc, "Cannot call [] on non-vec type"))
+          | Vect t -> if check_type (type_of_expr tei) Int32 then
+                        TBrackets (teo, tei, loc, t), env
+                      else
+                        raise (Typing_error (location_of_expr tei,
+                                            "Expected i32 argument to [] call"))
+          | _ -> raise (Typing_error (location_of_expr teo,
+                                     "Cannot call [] on non-vec type"))
         end
-    | FunCall (f, arg, loc) ->
-        if not (is_fun env f) then raise (Typing_error (loc, "Undefined function : " ^ f)) else
+    | FunCall ((f,f_loc), arg, loc) ->
+        if not (is_fun env f) then raise (Typing_error (f_loc, "Undefined function " ^ f)) else
         let targ = List.map (fun x -> fst (type_expr env x)) arg
         in let r = check_args loc (fun_type env f) (List.map type_of_expr targ)
-        in TFunCall(f, targ, loc, r), env
+        in TFunCall((f,f_loc), targ, loc, r), env
     | Vec (e, loc) ->
         let te = List.map (fun x -> fst (type_expr env x)) e in
         let types_list = List.map type_of_expr te in
@@ -283,7 +292,9 @@ let type_file file =
           TVec (te, loc, Vect t), env
         else raise (Typing_error (loc, "Incompatible vector elements"))
     | Print (s, loc) -> TPrint (s, loc, Unit), env
-    | Bloc (b, loc) -> let tb, _ = type_bloc env b in TBloc (tb, loc, type_of_bloc tb), env
+    | Bloc (b, loc) ->
+        let tb, _ = type_bloc env b in
+        TBloc (tb, loc, type_of_bloc tb), env
   and type_bloc env (instr_list, expr, loc) =
     let til, n_env = fold_env type_instr env instr_list in
     let te, r = match expr with
@@ -294,16 +305,16 @@ let type_file file =
     | Empty loc -> TEmpty (loc, Unit), env
     | Expr (e, loc) -> let te = fst (type_expr env e) in
         TExpr (te, loc, type_of_expr te), env
-    | Let (b, i, e, loc) ->
+    | Let (b, (i,i_loc), e, loc) ->
         let te, _ = type_expr env e in
         let t = type_of_expr te in
-        TLet(b, i, te, loc, Unit), (decl_var env i t b)
-    | LetStruct (b, i, s, l, loc) ->
-        let tl = List.map (fun (id, ex) -> (id, fst (type_expr env ex))) l in
+        TLet(b, (i,i_loc), te, loc, Unit), (decl_var env i t b)
+    | LetStruct (b, (i,i_loc), (s,s_loc), l, loc) ->
+        let tl = List.map (fun (id, l, ex) -> (id, l, fst (type_expr env ex))) l in
         let env1 = decl_var env i (Struct s) b in
-        let t = List.map (fun (id, te) -> (id, type_of_expr te)) tl in
+        let t = List.map (fun (id, _, te) -> (id, type_of_expr te)) tl in
         check_structure_instanciation env loc s t;
-        TLetStruct (b, s, i, tl, loc, Unit), env1
+        TLetStruct (b, (i,i_loc), (s,s_loc), tl, loc, Unit), env1
     | While (e, b, loc) ->
         let te, _ = type_expr env e in
         if check_type (type_of_expr te) Boolean then
@@ -313,7 +324,8 @@ let type_file file =
               TWhile (te, tb, loc, Unit), env
             else raise (Typing_error (loc, "Expected unit bloc as while argument"))
           end
-        else raise (Typing_error (loc, "Expected boolean condition for while bloc"))
+        else raise (Typing_error (location_of_expr te,
+                                 "Expected boolean condition for while bloc"))
     | Return (eo, loc) ->
         let teo = begin
           match eo with
@@ -328,6 +340,7 @@ let type_file file =
           if (check_type (type_of_bloc tb1) (type_of_bloc tb2)) then
             let t = type_of_bloc tb1 in TIf (te, tb1, tb2, loc, t), env
           else raise (Typing_error (loc, "Expected same type for both blocs"))
-        else raise (Typing_error (loc, "Expected boolean condition for if bloc"))
+        else raise (Typing_error (location_of_expr te,
+                                 "Expected boolean condition for if bloc"))
   in let typed_file, _ = fold_env type_decl empty_env file
   in typed_file

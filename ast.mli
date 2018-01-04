@@ -22,19 +22,23 @@ type expr =
   | Dot of expr * ident * location
   | Len of expr * location
   | Brackets of expr * expr * location
-  | FunCall of ident * expr list * location
+  | FunCall of (ident * location) * expr list * location
   | Vec of expr list * location
   | Print of _string * location
   | Bloc of bloc * location
 and decl =
-  | DeclStruct of ident * (ident * _type) list * location
-  | DeclFun of ident * (bool * ident * _type) list * _type option * bloc * location
+  | DeclStruct of (ident * location)
+                  * (ident * location * _type) list * location
+  | DeclFun of (ident * location)
+               * (bool * ident * location * _type) list
+               * _type option * bloc * location
 and bloc = instr list * expr option * location
 and instr =
   | Empty of location
   | Expr of expr * location
-  | Let of bool * ident * expr * location
-  | LetStruct of bool * ident * ident * (ident * expr) list * location
+  | Let of bool * (ident * location) * expr * location
+  | LetStruct of bool * (ident * location) * (ident * location)
+                 * (ident * location * expr) list * location
   | While of expr * bloc * location
   | Return of expr option * location
   | If of expr * bloc * bloc * location
