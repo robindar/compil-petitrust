@@ -7,14 +7,15 @@ module Env = Map.Make(String)
 
 let empty_env = (Env.empty, Env.empty, Env.empty)
 
-let var_type (env, _, _) i = Env.find i env
+let var_type (env, _, _) i = fst (Env.find i env)
+let is_mut (env, _, _) i = snd (Env.find i env)
 let is_fun (_, env, _) f = Env.mem f env
 let fun_type (_, env, _) f = Env.find f env
 let is_struct (_, _, env) s = Env.mem s env
 let has_variable (_, _, env) s i = Env.mem i (Env.find s env)
 let struct_type (_, _, env) s i = Env.find i (Env.find s env)
 
-let decl_var (env, f_env, s_env) v t = (Env.add v t env, f_env, s_env)
+let decl_var (env, f_env, s_env) v t mut = (Env.add v (t, mut) env, f_env, s_env)
 let decl_fun (v_env, env, s_env) f t = (v_env, Env.add f t env, s_env)
 let decl_struct (v_env, f_env, env) s l =
   let s_env = List.fold_left
@@ -40,7 +41,7 @@ let unop_type = function
 
 let binop_type = function
   | Add | Sub | Mul | Div | Mod -> [Int32; Int32], Int32
-  | Equal -> raise (Typing_error "Missing let keyword for equal sign")
+  | Equal -> raise Exit
   | Eq | Neq | Leq | Geq
   | Lt | Gt | And | Or -> [Boolean; Boolean], Boolean
 
@@ -129,6 +130,20 @@ let rec check_return require_ret (instr, _, ty) ret =
 
 let check_function_return = check_return false
 
+let rec is_l_value = function
+  | TIdent _ -> true
+  | TUnop (Star, _, _) -> true
+  | TBrackets (_, _, _) -> true
+  | TDot (e, _, _) -> is_l_value e
+  | _ -> false
+
+let rec is_mut_value env = function
+  | TIdent (i,_) -> is_mut env i
+  | TUnop (Star, _, _) -> true
+  | TBrackets (e, _, _) -> is_mut_value env e
+  | TDot (e, _, _) -> is_mut_value env e
+  | _ -> false
+
 let type_file file =
   let fold_env typer env =
     List.fold_left (fun (l, env) x ->
@@ -167,7 +182,7 @@ let type_file file =
     | Ident i ->
         begin
           try TIdent (i, var_type env i), env
-          with Not_found -> raise (Typing_error "Undefined litteral")
+          with Not_found -> raise (Typing_error ("Undefined litteral : " ^ i))
         end
     | Unop (u, e) ->
         begin
@@ -178,16 +193,35 @@ let type_file file =
                     | Ref (_, t) -> t
                     | _ -> raise (Typing_error "Expected reference type")
                     end
-          | Amp -> Ref (false, type_of_expr te)
-          | AmpMut -> Ref (true, type_of_expr te)
+          | Amp ->
+              if is_l_value te then
+                Ref (false, type_of_expr te)
+              else raise (Typing_error "Expected l_value for reference")
+          | AmpMut ->
+              if not (is_l_value te) then
+                raise (Typing_error "Expected l_value for mutable reference")
+              else if not (is_mut_value env te) then
+                raise (Typing_error "Expected mutable value for mutable reference")
+              else
+                Ref (true, type_of_expr te)
           | _ -> check_args (unop_type u) [(type_of_expr te)]
           in TUnop(u, te, r), env
         end
     | Binop (b, e1, e2) ->
         let te1, _ = type_expr env e1
-        and te2, _ = type_expr env e2
-        in let r = check_args (binop_type b) (List.map type_of_expr [te1; te2])
-        in TBinop (b, te1, te2, r), env
+        and te2, _ = type_expr env e2 in
+        if b = Equal then
+          if not (type_of_expr te1 = type_of_expr te2) then
+            raise (Typing_error "Type mismatch in assignement")
+          else if not (is_l_value te1) then
+            raise (Typing_error "Expected l_value for assignement")
+          else if not (is_mut_value env te1) then
+            raise (Typing_error "Expected mutable value for assignement")
+          else
+            TBinop (b, te1, te2, Unit), env
+        else
+          let r = check_args (binop_type b) (List.map type_of_expr [te1; te2])
+          in TBinop (b, te1, te2, r), env
     | Dot (e, i) ->
         let te = fst (type_expr env e) in
         begin
@@ -241,10 +275,10 @@ let type_file file =
     | Let (b, i, e) ->
         let te, _ = type_expr env e in
         let t = type_of_expr te in
-        TLet(b, i, te, Unit), (decl_var env i t)
+        TLet(b, i, te, Unit), (decl_var env i t b)
     | LetStruct (b, i, s, l) ->
         let tl = List.map (fun (id, ex) -> (id, fst (type_expr env ex))) l in
-        let env1 = decl_var env i (Struct s) in
+        let env1 = decl_var env i (Struct s) b in
         let t = List.map (fun (id, te) -> (id, type_of_expr te)) tl in
         check_structure_instanciation env s t;
         TLetStruct (b, s, i, tl, Unit), env1
