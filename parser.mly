@@ -42,33 +42,33 @@ file:
 
 expression:
   | i = INT
-     { Int i }
+     { Int (i, ($startpos, $endpos)) }
   | TRUE
-    { Bool true }
+    { Bool (true, ($startpos, $endpos)) }
   | FALSE
-    { Bool false }
+    { Bool (false, ($startpos, $endpos)) }
   | s = IDENT
-    { Ident s }
+    { Ident (s, ($startpos, $endpos)) }
   | e1 = expression; o = op; e2 = expression
-    { Binop (o, e1, e2) }
+    { Binop (o, e1, e2, ($startpos, $endpos)) }
   | u = unary_op; e = expression %prec UNARY_PREC
-    { Unop (u, e) }
+    { Unop (u, e, ($startpos, $endpos)) }
   | LEFTPAREN; e = expression; RIGHTPAREN
     { e }
   | e = expression; DOT; i = IDENT
-    { Dot (e, i) }
+    { Dot (e, i, ($startpos, $endpos)) }
   | e = expression; DOT; LENGTH;
-    { Len e }
+    { Len (e, ($startpos, $endpos)) }
   | e = expression; LEFTBRACKET; i = expression; RIGHTBRACKET
-    { Brackets (e, i) }
+    { Brackets (e, i, ($startpos, $endpos)) }
   | i = IDENT; LEFTPAREN; l = separated_list(COMMA, expression); RIGHTPAREN
-    { FunCall (i, l) }
+    { FunCall (i, l, ($startpos, $endpos)) }
   | VEC; LEFTBRACKET; l = separated_list(COMMA, expression); RIGHTBRACKET
-    { Vec l }
+    { Vec (l, ($startpos, $endpos)) }
   | PRINT; LEFTPAREN; s = STRING; RIGHTPAREN
-    { Print s }
+    { Print (s, ($startpos, $endpos)) }
   | b = bloc
-    { Bloc b }
+    { Bloc (b, ($startpos, $endpos)) }
 %inline op:
   | STAR    { Mul }
   | SLASH   { Div }
@@ -120,36 +120,36 @@ mut_ident_type:
 
 decl:
   STRUCT; i = IDENT; LEFTBRACE; l = separated_list(COMMA, ident_type) ; RIGHTBRACE
-  { DeclStruct (i, l) }
+  { DeclStruct (i, l, ($startpos, $endpos)) }
 | FN; i = IDENT; LEFTPAREN; l = separated_list(COMMA, mut_ident_type); RIGHTPAREN; t = option(ARROW; s = _type { s }); b = bloc
-  { DeclFun (i, l, t, b) }
+  { DeclFun (i, l, t, b, ($startpos, $endpos)) }
 ;
 
 instruction:
   SEMICOLON
-  { Empty }
+  { Empty ($startpos, $endpos) }
 | e = expression; SEMICOLON
-  { Expr e }
+  { Expr (e, ($startpos, $endpos)) }
 | LET; m = mut; i = IDENT; EQUAL; e = expression; SEMICOLON
-  { Let (m, i, e) }
+  { Let (m, i, e, ($startpos, $endpos)) }
 | LET; m = mut; i = IDENT; EQUAL; i2 = IDENT; LEFTBRACE;
     l = separated_list(COMMA, a = IDENT; COLON; e = expression { (a, e) });
   RIGHTBRACE; SEMICOLON
-  { LetStruct (m, i, i2, l) }
+  { LetStruct (m, i, i2, l, ($startpos, $endpos)) }
 | RETURN; e = option(expression); SEMICOLON
-  { Return e }
+  { Return (e, ($startpos, $endpos)) }
 | WHILE; e = expression; b = bloc
-  { While (e, b) }
+  { While (e, b, ($startpos, $endpos)) }
 | i = if_structure
   { i }
 
 if_structure:
   IF; e = expression; b = bloc
-  { If (e, b, ([], None)) }
+  { If (e, b, ([], None, ($startpos, $endpos)), ($startpos, $endpos)) }
 | IF; e = expression; bi = bloc; ELSE be = bloc
-  { If (e, bi, be) }
+  { If (e, bi, be, ($startpos, $endpos)) }
 | IF; e = expression; bi = bloc; ELSE i = if_structure
-  { If (e, bi, ([i], None)) }
+  { If (e, bi, ([i], None, ($startpos, $endpos)), ($startpos, $endpos)) }
 ;
 
 bloc_body:
@@ -161,5 +161,5 @@ bloc_body:
 
 bloc:
   LEFTBRACE; b = bloc_body; RIGHTBRACE
-  { b }
+  { let l, e = b in (l, e, ($startpos, $endpos)) }
 ;
