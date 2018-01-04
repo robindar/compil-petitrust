@@ -41,7 +41,7 @@ let unop_type = function
 
 let binop_type = function
   | Add | Sub | Mul | Div | Mod -> [Int32; Int32], Int32
-  | Equal -> raise Exit
+  | Equal -> assert false
   | Eq | Neq | Leq | Geq
   | Lt | Gt | And | Or -> [Boolean; Boolean], Boolean
 
@@ -139,7 +139,12 @@ let rec is_l_value = function
 
 let rec is_mut_value env = function
   | TIdent (i,_) -> is_mut env i
-  | TUnop (Star, _, _) -> true
+  | TUnop (Star, e, _) ->
+      begin
+        match type_of_expr e with
+        | Ref (b, _) -> b
+        | _ -> assert false
+      end
   | TBrackets (e, _, _) -> is_mut_value env e
   | TDot (e, _, _) -> is_mut_value env e
   | _ -> false
