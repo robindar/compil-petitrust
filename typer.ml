@@ -115,7 +115,7 @@ let check_structure_instanciation (_, _, env) loc s decl =
           raise (Typing_error (loc, "Missing variable in struct : " ^ id))
       | _ -> () in
     Env.iter check_presence vars
-  with Not_found -> raise (Typing_error (loc, "Unkown structure : " ^ s))
+  with Not_found -> raise (Typing_error (loc, "Unknown structure : " ^ s))
 
 let rec check_return require_ret (instr, _, _, ty) ret =
   let rec check_instr def = function

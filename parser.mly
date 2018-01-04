@@ -105,7 +105,7 @@ _type:
 
 ident_type:
   i = IDENT; COLON; t = _type
-  { (i, ($startpos(i), $endpos(i)), t) }
+  { (i, ($startpos, $endpos), t) }
 ;
 
 mut:
