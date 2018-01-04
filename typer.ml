@@ -158,6 +158,11 @@ let rec is_mut_value env = function
   | TDot (e, _, _) -> is_mut_value env e
   | _ -> false
 
+let auto_deref te = match type_of_expr te with
+  | Ref (_, Vect t) -> TUnop (Star, te, Vect t)
+  | Ref (_, Struct s) -> TUnop (Star, te, Struct s)
+  | _ -> te
+
 let type_file file =
   let fold_env typer env =
     List.fold_left (fun (l, env) x ->
@@ -239,7 +244,7 @@ let type_file file =
           let r = check_args (binop_type b) (List.map type_of_expr [te1; te2])
           in TBinop (b, te1, te2, r), env
     | Dot (e, i) ->
-        let te = fst (type_expr env e) in
+        let te = auto_deref (fst (type_expr env e)) in
         begin
           match type_of_expr te with
           | Struct s ->
@@ -249,14 +254,14 @@ let type_file file =
           | _ -> raise (Typing_error "Cannot call . on non-struct type")
         end
     | Len e ->
-        let te = fst (type_expr env e) in
+        let te = auto_deref (fst (type_expr env e)) in
         begin
           match type_of_expr te with
           | Vect t -> TLen (te, Int32), env
           | _ -> raise (Typing_error "Cannot call len on non-vec type")
         end
     | Brackets (eo, ei) ->
-        let teo = fst (type_expr env eo) in
+        let teo = auto_deref (fst (type_expr env eo)) in
         let tei = fst (type_expr env ei) in
         begin
           match type_of_expr teo with
