@@ -176,7 +176,9 @@ let type_file file =
           let arg_type = List.map (fun (x,y,z) -> expr_type_of_type env z) l in
           let n_env = decl_fun env i (arg_type, ret_type) in
           let n_arg = List.map (fun (x,y,z) -> (x, y, expr_type_of_type env z)) l in
-          let tb, _ = type_bloc env b in
+          let n_env_args = List.fold_left
+            (fun _env (b, x, t) -> decl_var _env x t b) n_env n_arg in
+          let tb, _ = type_bloc n_env_args b in
           if check_function_return tb ret_type then
             TDeclFun (i, n_arg, ret_type, tb, Unit), n_env
           else
