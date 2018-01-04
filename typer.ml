@@ -59,22 +59,24 @@ let location_of_expr = function
   | TBloc (_, l, _) -> l
 
 let type_keywords = [ "i32", Int32; "()", Unit; "bool", Boolean]
-let rec expr_type_of_type env loc (x : Ast._type) = match x with
+let rec expr_type_of_type_with_struct (in_v,s) env loc (x : Ast._type) = match x with
   | Ident i ->
     begin
       try
         List.assoc i type_keywords
       with Not_found ->
-        if is_struct env i then
+        if (is_struct env i) || (in_v && i = s) then
           Struct i
         else raise (Typing_error (loc, "Unknown type"))
     end
   | TypedIdent (i, t) ->
       if i = "Vec" then
-        Vect (expr_type_of_type env loc t)
+        Vect (expr_type_of_type_with_struct (true,s) env loc t)
       else raise (Typing_error (loc, "Unknown bracket type"))
-  | AddressOfMut t -> Ref (true, expr_type_of_type env loc t)
-  | AddressOf t ->    Ref (false, expr_type_of_type env loc t)
+  | AddressOfMut t -> Ref (true, expr_type_of_type_with_struct (in_v,s) env loc t)
+  | AddressOf t ->    Ref (false, expr_type_of_type_with_struct (in_v,s) env loc t)
+
+let expr_type_of_type = expr_type_of_type_with_struct (false, "")
 
 let expr_type_of_type_option env loc = function
   | None -> Unit
@@ -178,7 +180,10 @@ let type_file file =
         raise (Typing_error (i_loc, "Redefinition of struct " ^ i))
       else
         check_duplicate_idents l;
-        let n_arg = List.map (fun (x,l,y) -> (x, l, expr_type_of_type env l y)) l in
+        let n_arg = List.map
+          (fun (x,l,y) ->
+            (x, l, expr_type_of_type_with_struct (false,i) env l y))
+          l in
         let n_env = decl_struct env i n_arg in
         TDeclStruct ((i, i_loc), n_arg, loc, Unit), n_env
     | DeclFun ((i, i_loc), l, t, b, loc) ->
