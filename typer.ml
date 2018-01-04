@@ -82,6 +82,11 @@ let rec check_type t a = match t, a with
   | Vect t1, Vect t2 -> check_type t1 t2
   | _, _ -> t = a
 
+let rec update_vec_type t a = match t, a with
+  | Neutral, _ -> a
+  | Ref (b1, e1), Ref (b2, e2) -> Ref (b1 && b2, update_vec_type e1 e2)
+  | _, _ -> a
+
 let check_args (t_arg, ret) arg =
   let rec check_rec = function
     | ([], []) -> ret
@@ -267,11 +272,11 @@ let type_file file =
         in TFunCall(f, targ, r), env
     | Vec e ->
         let te = List.map (fun x -> fst (type_expr env x)) e in
-        let t = List.fold_left
-          (fun pt nt -> if check_type pt nt then nt
-            else raise (Typing_error "Incompatible vector elements"))
-          Neutral (List.map type_of_expr te) in
-        TVec (te, Vect t), env
+        let types_list = List.map type_of_expr te in
+        let t = List.fold_left update_vec_type Neutral types_list in
+        if List.for_all (fun x -> check_type x t) types_list then
+          TVec (te, Vect t), env
+        else raise (Typing_error "Incompatible vector elements")
     | Print s -> TPrint (s, Unit), env
     | Bloc b -> let tb, _ = type_bloc env b in TBloc (tb, type_of_bloc tb), env
   and type_bloc env (instr_list, expr) =
