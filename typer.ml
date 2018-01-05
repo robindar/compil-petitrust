@@ -119,31 +119,65 @@ let check_structure_instanciation (_, _, env) loc s decl =
     Env.iter check_presence vars
   with Not_found -> raise (Typing_error (loc, "Unknown structure : " ^ s))
 
-let rec check_return require_ret (instr, _, _, ty) ret =
-  let rec check_instr def = function
-    | [] -> def
-    | (TReturn (t, _, _))::_ ->
+(* All three following auxiliary functions :
+  * raise Ret_fail if an unproperly-typed return can be hit
+  * return true if a properly-typed return is always hit
+  * return false if it is possible not to hit a return statement
+ *)
+exception Ret_fail of Ast.location
+let check_function_return bloc ret =
+  let rec check_instr = function
+    | [] -> false
+    | (TReturn (t, l, _))::_ ->
       begin
       match t with
-      | None -> check_type Unit ret
-      | Some u -> check_type (type_of_expr u) ret
+      | None -> check_type Unit ret || raise (Ret_fail l)
+      | Some u -> check_expr u ||
+          check_type (type_of_expr u) ret ||
+          raise (Ret_fail l)
       end
-    | (TIf (_, t, e, _, _))::l ->
-      if (check_return true t ret) && (check_return true e ret) then
-        true
-      else
-        check_instr def l
-    | (TWhile (_, b, _, _))::l ->
-        (check_return false b ret) && (check_instr def l)
-    | _::l -> check_instr def l in
-  if check_type ty ret then
-    check_instr (not require_ret) instr
-  else
-    if check_type ty Unit then
-      check_instr false instr
-    else false
+    | (TIf (c, t, e, _, y))::l ->
+      check_expr c ||
+      (check_bloc t && check_bloc e) ||
+      check_instr l
+    | (TWhile (c, b, _, _))::l ->
+      check_expr c ||
+      (check_bloc b && false) ||
+      check_instr l
+    | _::l -> check_instr l
+  and check_expr = function
+    | TUnop (_, e, _, _)
+    | TDot (e, _, _, _)
+    | TLen (e, _, _) -> check_expr e
+    | TBinop (_, e1, e2, _, _)
+    | TBrackets (e1, e2, _, _) -> check_expr e1 || check_expr e2
+    | TFunCall (_, el, _, _)
+    | TVec (el, _, _) -> List.exists check_expr el
+    | TBloc (bloc, _, _) -> check_bloc bloc
+    | _ -> false
+  and check_bloc (instr, e, _, _) =
+    check_instr instr ||
+    match e with
+      | None -> false
+      | Some exp -> check_expr exp
+  in
+  let i, _, loc, ty = bloc in
+  let correct_type = check_type ty ret
+  and unit_type = check_type ty Unit in
+  try
+    if correct_type || unit_type then
+      check_bloc bloc || correct_type
+    else
+      raise (Typing_error (loc, "Wrong type for bloc"))
+  with Ret_fail l ->
+    raise (Typing_error (l, "Invalid return type"))
 
-let check_function_return = check_return false
+let last l =
+  if List.length l = 0 then raise (Failure "No last element in empty list");
+  let rec aux el = function
+    | [] -> el
+    | t::q -> aux t q in
+  aux (List.hd l) (List.tl l)
 
 let rec is_l_value = function
   | TIdent (_, _, _) -> true
@@ -201,7 +235,7 @@ let type_file file =
         if check_function_return tb ret_type then
           TDeclFun ((i,i_loc), n_arg, ret_type, tb, loc, Unit), n_env
         else
-          raise (Typing_error (loc, "Unproper return type for function bloc"))
+          raise (Typing_error (i_loc, "Function "^i^" does not always return"))
   and type_expr env = function
     | Int (i, loc) -> TInt (i, loc, Int32), env
     | Bool (b, loc) -> TBool (b, loc, Boolean), env
@@ -303,7 +337,12 @@ let type_file file =
   and type_bloc env (instr_list, expr, loc) =
     let til, n_env = fold_env type_instr env instr_list in
     let te, r = match expr with
-      | None -> None, Unit
+      | None ->
+        let ty = if List.length til = 0 then Unit
+          else match last til with
+            | TIf (_, _, _, _, t) -> t
+            | _ -> Unit
+        in None, ty
       | Some e -> let t,_ = type_expr n_env e in Some t, type_of_expr t
     in (til, te, loc, r), env
   and type_instr env = function
