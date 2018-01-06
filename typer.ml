@@ -204,10 +204,11 @@ let auto_deref loc te = match type_of_expr te with
   | _ -> te
 
 let type_file file =
-  let fold_env typer env =
-    List.fold_left (fun (l, env) x ->
+  let fold_env typer env l =
+    let fl, _env = List.fold_left (fun (l, env) x ->
       let tx, n_env = typer env x in (tx::l, n_env))
-    ([], env) in
+    ([], env) l in
+    (List.rev fl, _env) in
   let rec type_decl env = function
     | DeclStruct ((i, i_loc), l, loc) ->
       if is_struct env i then
