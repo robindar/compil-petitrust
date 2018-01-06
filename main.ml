@@ -41,6 +41,8 @@ let () =
     if !parse_only then exit 0 else
     let typed_file = Typer.type_file f in
     if !type_only then exit 0;
+    let checked_file = Borrow_checker.borrow_check_file typed_file in
+    if !no_asm then exit 0;
     (* Move on *)
   with
     | Lexer.Lexing_error s ->
@@ -54,6 +56,10 @@ let () =
     | Typer.Typing_error (l, s) ->
         let f, t = l in report (f, t);
         eprintf "Typing error: %s@." s;
+        exit 1
+    | Borrow_checker.Borrow_checking_error (l, s) ->
+        let f, t = l in report (f, t);
+        eprintf "Borrow checking error: %s@." s;
         exit 1
     | e ->
 	eprintf "Anomaly: %s\n@." (Printexc.to_string e);
