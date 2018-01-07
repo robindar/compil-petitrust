@@ -203,6 +203,17 @@ let auto_deref loc te = match type_of_expr te with
   | Ref (_, Struct s) -> TUnop (Star, te, loc, Struct s)
   | _ -> te
 
+let check_main =
+  let rec _rec_check = function
+    | [] -> raise (Typing_error ((Lexing.dummy_pos, Lexing.dummy_pos),
+                  "No main function found"))
+    | (TDeclFun ((i,i_loc),arg,ret,bloc,loc,t))::q when i = "main" ->
+        (TDeclFun (("_main",i_loc),arg,ret,bloc,loc,t))::q
+    | (TDeclStruct _ as d)::q -> d::(_rec_check q)
+    | (TDeclFun _ as d)::q -> d::(_rec_check q) in
+  _rec_check
+
+
 let type_file file =
   let fold_env typer env l =
     let fl, _env = List.fold_left (fun (l, env) x ->
@@ -388,4 +399,4 @@ let type_file file =
         else raise (Typing_error (location_of_expr te,
                                  "Expected boolean condition for if bloc"))
   in let typed_file, _ = fold_env type_decl empty_env file
-  in typed_file
+  in check_main typed_file
