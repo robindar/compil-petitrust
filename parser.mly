@@ -66,7 +66,7 @@ expression:
   | VEC; LEFTBRACKET; l = separated_list(COMMA, expression); RIGHTBRACKET
     { Vec (l, ($startpos, $endpos)) }
   | PRINT; LEFTPAREN; s = STRING; RIGHTPAREN
-    { Print (s, ($startpos, $endpos)) }
+    { Print (String.sub s 1 (String.length s - 2), ($startpos, $endpos)) }
   | b = bloc
     { Bloc (b, ($startpos, $endpos)) }
 %inline op:
