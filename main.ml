@@ -7,13 +7,19 @@ let usage = "usage: prustc [options] file.rs"
 
 let parse_only = ref false
 let type_only  = ref false
+let no_bc      = ref false
 let no_asm     = ref false
+let out_file = ref ""
+
+let set_out_file s = out_file := s
 
 let spec =
   [
     "--parse-only", Arg.Set parse_only, "  stop after parsing";
     "--type-only",  Arg.Set type_only,  "  stop after typing";
+    "--no-bc",      Arg.Set no_bc,      "  skip borrow-checking";
     "--no-asm",     Arg.Set no_asm,     "  stop after borrow checking";
+    "-o", Arg.String set_out_file,  " <file>   specify output file name";
   ]
 
 let file =
@@ -41,9 +47,10 @@ let () =
     if !parse_only then exit 0 else
     let typed_file = Typer.type_file f in
     if !type_only then exit 0;
-    let checked_file = Borrow_checker.borrow_check_file typed_file in
+    Borrow_checker.borrow_check_file typed_file;
     if !no_asm then exit 0;
-    (* Move on *)
+    if !out_file = "" then out_file := Filename.chop_suffix file ".rs" ^ ".s";
+    Compiler.compile_program typed_file !out_file
   with
     | Lexer.Lexing_error s ->
 	report (lexeme_start_p lb, lexeme_end_p lb);
