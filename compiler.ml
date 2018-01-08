@@ -26,6 +26,9 @@ let epush (ofs,r) size =
   memmove (ofs,r) (0,rsp) size ++
   subq (imm (size * 8)) (reg rsp)
 
+let epop size =
+  addq (imm (size * 8)) (reg rsp)
+
 let size_of = Precompiler.size_of
 
 let lib =
@@ -86,7 +89,9 @@ and compile_bloc (instr, expr, _) =
     | Some e -> compile_expr e
 and compile_instr = function
   | PEmpty -> nop
-  | PExpr (e,_) -> compile_expr e ++ popq rax
+  | PExpr (e,t) ->
+      compile_expr e ++
+      epop (size_of t)
   | PLet ((_,i), e, t) ->
       let t = size_of t in
       compile_expr e ++
