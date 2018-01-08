@@ -1,5 +1,9 @@
 %{
   open Ast
+
+  let process_string s =
+    let t = String.sub s 1 (String.length s - 2) in
+    Scanf.unescaped t
 %}
 %token <int> INT
 %token <string> STRING
@@ -66,7 +70,7 @@ expression:
   | VEC; LEFTBRACKET; l = separated_list(COMMA, expression); RIGHTBRACKET
     { Vec (l, ($startpos, $endpos)) }
   | PRINT; LEFTPAREN; s = STRING; RIGHTPAREN
-    { Print (String.sub s 1 (String.length s - 2), ($startpos, $endpos)) }
+    {Print (process_string s, ($startpos, $endpos)) }
   | b = bloc
     { Bloc (b, ($startpos, $endpos)) }
 %inline op:
