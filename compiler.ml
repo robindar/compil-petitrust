@@ -37,6 +37,12 @@ let epush (f,fr) size =
 
 let size_of = Precompiler.size_of
 
+(* sets rdi to rbp d levels above *)
+let rec reach_depth = function
+  | 0 -> movq (reg rbp) (reg rdi)
+  | d -> reach_depth (d-1) ++
+    movq (ind rdi) (reg rdi)
+
 let lib =
   (* rdi : string label *)
   label "_print" ++
@@ -63,8 +69,9 @@ let rec compile_expr = function
       pushq (imm i)
   | PBool b ->
       pushq (imm (int_of_bool b))
-  | PIdent ((_,ofs), ty) ->
-      epush (ofs,rbp) (size_of ty)
+  | PIdent ((d,ofs), ty) ->
+      reach_depth d ++
+      epush (ofs,rdi) (size_of ty)
   | PUnop (op, e, _) ->
       compile_expr e ++
       begin match op with
@@ -115,6 +122,7 @@ let rec compile_expr = function
       movq (ilab id) (reg rdi) ++
       call "_print" ++
       pushq (imm 0)
+  | PBloc b -> compile_bloc b
   | _ -> assert false
 and compile_bloc (instr, expr, vars_size, t) =
   (if vars_size > 0 then pushn vars_size else nop) ++
