@@ -104,8 +104,8 @@ let rec compile_expr = function
       | Leq -> compare setle
       | Gt  -> compare setg
       | Lt  -> compare setl
-      | And -> assert false
-      | Or  -> assert false
+      | And -> andq (reg rbx) (reg rax)
+      | Or  -> orq (reg rbx) (reg rax)
       | Equal -> assert false
       end ++ pushq (reg rax)
   | PPrint s ->
