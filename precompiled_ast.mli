@@ -12,7 +12,7 @@ type prec_expr =
   | PDot of prec_expr * offset * expr_type
   | PLen of prec_expr * expr_type
   | PBrackets of prec_expr * prec_expr * expr_type
-  | PFunCall of ident * prec_expr list * expr_type
+  | PFunCall of ident * prec_expr list * int * expr_type
   | PVec of prec_expr list * expr_type
   | PPrint of _string
   | PBloc of prec_bloc

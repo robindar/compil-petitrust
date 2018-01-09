@@ -16,7 +16,9 @@ let get_var i (_,env,_) = CompileEnv.find i env
 let get_next_offset (_,_,n) = n
 let add_var i size (d, env, n) =
   (d, CompileEnv.add i (d,-n) env, n + size)
-let dig (d, env) = (d + 1, env)
+let add_arg i ofs (d, env, n) =
+  (d, CompileEnv.add i (d+1,ofs) env, n)
+let dig (d, env, _) = (d + 1, env, 1)
 
 let get_offset i env =
   let depth, ofs = get_var i env in
@@ -37,19 +39,28 @@ let precompile p =
     | TDot (e, i, _, _) -> assert false
     | TLen (e, _, _) -> assert false
     | TBrackets (eo, ei, _, _) -> assert false
-    | TFunCall ((f,_), el, _, _) -> assert false
+    | TFunCall ((f,_), el, _, t) ->
+        let pel = List.map (precompile_expr env) el in
+        let s = List.fold_left (+) 0
+          (List.map (fun x -> size_of (Typer.type_of_expr x)) el) in
+        PFunCall(f, pel, s, t)
     | TVec (el, _, _) -> assert false
     | TPrint (s, _, _) -> PPrint s
     | TBloc (b, _, _) -> PBloc (precompile_bloc env b)
   and precompile_decl env = function
     | TDeclStruct _ -> assert false
     | TDeclFun ((f,_), arg, _, bloc, _, _) ->
-        let pbloc = precompile_bloc env bloc in
+        let pos = ref 1 in
+        let process_arg _env (_, i, _, t) =
+          pos := !pos + (size_of t);
+          add_arg i !pos _env in
+        let _env = List.fold_left process_arg env arg in
+        let pbloc = precompile_bloc _env bloc in
         PDeclFun (f, pbloc), env
   and precompile_bloc env (instr, expr, _, t) =
     let pinstr, _env = List.fold_left
       (fun (l,_env) i -> let pi, n_env = precompile_instr _env i in (pi::l, n_env))
-      ([], env) instr in
+      ([], dig env) instr in
     let vars_size = get_next_offset _env - 1 in
     match expr with
       | None -> (List.rev pinstr, None, vars_size, t)

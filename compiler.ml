@@ -117,6 +117,14 @@ let rec compile_expr = function
       | Or  -> orq (reg rbx) (reg rax)
       | Equal -> assert false
       end ++ pushq (reg rax)
+  | PDot (e, (d,o), t) -> assert false
+  | PLen (e, t) -> assert false
+  | PBrackets (eo, ei, t) -> assert false
+  | PFunCall (f, el, arg_size, t) ->
+      List.fold_left (++) nop (List.rev (List.map compile_expr el)) ++
+      call f ++
+      popn arg_size ++
+      epush (0,rax) (size_of t)
   | PPrint s ->
       let id = register_data s in
       movq (ilab id) (reg rdi) ++
@@ -125,6 +133,8 @@ let rec compile_expr = function
   | PBloc b -> compile_bloc b
   | _ -> assert false
 and compile_bloc (instr, expr, vars_size, t) =
+  pushq (reg rbp) ++
+  movq (reg rsp) (reg rbp) ++
   (if vars_size > 0 then pushn vars_size else nop) ++
   List.fold_left (++) nop (List.map compile_instr instr) ++
   begin match expr with
@@ -132,11 +142,12 @@ and compile_bloc (instr, expr, vars_size, t) =
     | Some e -> compile_expr e
   end ++
   movq (reg rsp) (reg rax) ++
-  subq (imm (8 * size_of t)) (reg rax) ++
+  subq (imm (8 * (size_of t - 1))) (reg rax) ++
   popn (size_of t) ++
   (if vars_size > 0 then
     popn vars_size
-  else nop)
+  else nop) ++
+  popq rbp
 
 and compile_instr = function
   | PEmpty -> nop
@@ -167,10 +178,7 @@ let compile_decl = function
   | PDeclStruct _ -> assert false
   | PDeclFun (f, bloc) ->
       label f ++
-      pushq (reg rbp) ++
-      movq (reg rsp) (reg rbp) ++
       compile_bloc bloc ++
-      popq rbp ++
       ret
 
 let compile_program p out_file =
