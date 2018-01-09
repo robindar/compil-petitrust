@@ -84,6 +84,11 @@ let rec compile_expr = function
   | PBinop (Equal, e1, e2, _) ->
       assert false
   | PBinop (op, e1, e2, _) ->
+      let compare setter =
+        movq (imm 0) (reg r9) ++
+        cmpq (reg rbx) (reg rax) ++
+        setter (reg r9b) ++
+        movq (reg r9) (reg rax) in
       compile_expr e1 ++
       compile_expr e2 ++
       popq rbx ++ popq rax ++
@@ -93,16 +98,12 @@ let rec compile_expr = function
       | Mul -> imulq (reg rbx) (reg rax)
       | Div -> cqto ++ idivq (reg rbx)
       | Mod -> assert false
-      | Eq  ->
-          movq (imm 0) (reg r9) ++
-          cmpq (reg rax) (reg rbx) ++
-          sete (reg r9b) ++
-          movq (reg r9) (reg rax)
-      | Neq -> assert false
-      | Geq -> assert false
-      | Leq -> assert false
-      | Gt  -> assert false
-      | Lt  -> assert false
+      | Eq  -> compare sete
+      | Neq -> compare setne
+      | Geq -> compare setge
+      | Leq -> compare setle
+      | Gt  -> compare setg
+      | Lt  -> compare setl
       | And -> assert false
       | Or  -> assert false
       | Equal -> assert false
