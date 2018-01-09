@@ -3,7 +3,7 @@ open X86_64
 open Ast
 open Precompiled_ast
 
-let int_of_bool b = assert false
+let int_of_bool b = if b then 1 else 0
 
 let data_count = ref (-1)
 let data_seg = ref nop
@@ -73,7 +73,12 @@ let rec compile_expr = function
           movq (imm 0) (reg rax) ++
           subq (reg rbx) (reg rax) ++
           pushq (reg rax)
-      | Bang -> assert false
+      | Bang ->
+          popq rax ++
+          movq (imm 0) (reg r9) ++
+          testq (reg rax) (reg rax) ++
+          sete (reg r9b) ++
+          pushq (reg r9)
       | Star | Amp | AmpMut -> assert false
       end
   | PBinop (Equal, e1, e2, _) ->
@@ -88,7 +93,11 @@ let rec compile_expr = function
       | Mul -> imulq (reg rbx) (reg rax)
       | Div -> cqto ++ idivq (reg rbx)
       | Mod -> assert false
-      | Eq  -> assert false
+      | Eq  ->
+          movq (imm 0) (reg r9) ++
+          cmpq (reg rax) (reg rbx) ++
+          sete (reg r9b) ++
+          movq (reg r9) (reg rax)
       | Neq -> assert false
       | Geq -> assert false
       | Leq -> assert false
@@ -128,6 +137,19 @@ and compile_instr = function
       compile_expr e ++
       memmove (t-1,rsp) (i,rbp) t ++
       popn t
+  | PLetStruct _ -> assert false
+  | PWhile _ -> assert false
+  | PIf (c, t, e, ty) ->
+      let _else, _end = register_if () in
+      compile_expr c ++
+      popq rax ++
+      testq (reg rax) (reg rax) ++
+      jz _else ++
+      compile_bloc t ++
+      jmp _end ++
+      label _else ++
+      compile_bloc e ++
+      label _end
   | _ -> assert false
 
 let compile_decl = function
