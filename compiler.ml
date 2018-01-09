@@ -13,29 +13,50 @@ let register_data str =
   data_seg := label id ++ string str ++ !data_seg;
   id
 
+let if_count = ref (-1)
+let register_if () =
+  if_count := !if_count + 1;
+  let s = string_of_int !if_count in
+  ("_else_" ^ s, "_end_" ^ s)
+
+let pushn size =
+  subq (imm (size * 8)) (reg rsp)
+let popn size =
+  addq (imm (size * 8)) (reg rsp)
+
 let memmove (f,fr) (t,tr) s =
-  let rec _mov = function
-    | -1 -> nop
-    | i  -> _mov (i-1) ++
-      movq (ind ~ofs:((f+i)*8) fr) (reg r15) ++
-      movq (reg r15) (ind ~ofs:((t+i)*8) tr) in
-  _mov (s-1)
+  movq (imm s) (reg rdx) ++
+  leaq (ind ~ofs:(8 * f) fr) rsi ++
+  leaq (ind ~ofs:(8 * t) tr) rdi ++
+  call "_memmove"
 
 (* extended push *)
-let epush (ofs,r) size =
-  memmove (ofs,r) (0,rsp) size ++
-  subq (imm (size * 8)) (reg rsp)
-
-let epop size =
-  addq (imm (size * 8)) (reg rsp)
+let epush (f,fr) size =
+  pushn size ++
+  memmove (f,fr) (size-1,rsp) size
 
 let size_of = Precompiler.size_of
 
 let lib =
+  (* rdi : string label *)
   label "_print" ++
   movq (imm 0) (reg rax) ++
   call "printf" ++
+  ret ++
+
+  (* rdi : destination address
+   * rsi : source address
+   * rdx : size to copy *)
+  label "_memmove" ++
+  xorq (reg rcx) (reg rcx) ++
+  label "_memmove_loop" ++
+  movq (ind ~index:rcx ~scale:8 rsi) (reg r15) ++
+  movq (reg r15) (ind ~index:rcx ~scale:8 rdi) ++
+  incq (reg rcx) ++
+  cmpq (reg rcx) (reg rdx) ++
+  jl "_memmove_loop" ++
   ret
+
 
 let rec compile_expr = function
   | PInt i ->
@@ -80,29 +101,43 @@ let rec compile_expr = function
   | PPrint s ->
       let id = register_data s in
       movq (ilab id) (reg rdi) ++
-      call "_print"
+      call "_print" ++
+      pushq (imm 0)
   | _ -> assert false
-and compile_bloc (instr, expr, _) =
+and compile_bloc (instr, expr, vars_size, t) =
+  (if vars_size > 0 then pushn vars_size else nop) ++
   List.fold_left (++) nop (List.map compile_instr instr) ++
-  match expr with
-    | None -> nop
+  begin match expr with
+    | None -> pushq (imm 0)
     | Some e -> compile_expr e
+  end ++
+  movq (reg rsp) (reg rax) ++
+  subq (imm (8 * size_of t)) (reg rax) ++
+  popn (size_of t) ++
+  (if vars_size > 0 then
+    popn vars_size
+  else nop)
+
 and compile_instr = function
   | PEmpty -> nop
   | PExpr (e,t) ->
       compile_expr e ++
-      epop (size_of t)
+      popn (size_of t)
   | PLet ((_,i), e, t) ->
       let t = size_of t in
       compile_expr e ++
-      memmove (t, rbp) (i, rbp) t
+      memmove (t-1,rsp) (i,rbp) t ++
+      popn t
   | _ -> assert false
 
 let compile_decl = function
   | PDeclStruct _ -> assert false
   | PDeclFun (f, bloc) ->
       label f ++
+      pushq (reg rbp) ++
+      movq (reg rsp) (reg rbp) ++
       compile_bloc bloc ++
+      popq rbp ++
       ret
 
 let compile_program p out_file =
