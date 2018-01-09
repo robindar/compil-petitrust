@@ -97,7 +97,9 @@ let rec compile_expr = function
       | Sub -> subq (reg rbx) (reg rax)
       | Mul -> imulq (reg rbx) (reg rax)
       | Div -> cqto ++ idivq (reg rbx)
-      | Mod -> assert false
+      | Mod ->
+          cqto ++ idivq (reg rbx) ++
+          movq (reg rdx) (reg rax)
       | Eq  -> compare sete
       | Neq -> compare setne
       | Geq -> compare setge
