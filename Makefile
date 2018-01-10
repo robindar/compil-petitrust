@@ -4,3 +4,4 @@ main:
 
 clean:
 	rm _build/ -rf
+	rm -f ./prustc
