@@ -8,6 +8,7 @@ type prec_expr =
   | PBool of bool
   | PIdent of offset * expr_type
   | PUnop of unop_type * prec_expr * expr_type
+  | PAssignement of prec_expr * prec_expr * expr_type
   | PBinop of binop_type * prec_expr * prec_expr * expr_type
   | PDot of prec_expr * int * expr_type * expr_type
   | PLen of prec_expr * expr_type

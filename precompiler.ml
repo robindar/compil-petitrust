@@ -49,6 +49,10 @@ let precompile p =
         PIdent (get_offset i env, t)
     | TUnop (op, e, _, t) ->
         PUnop (op, precompile_expr env e, t)
+    | TBinop (Ast.Equal, e1, e2, _, _) ->
+        PAssignement (precompile_expr env e1,
+                      precompile_expr env e2,
+                      Typer.type_of_expr e2)
     | TBinop (op, e1, e2, _, t) ->
         PBinop (op, precompile_expr env e1, precompile_expr env e2, t)
     | TDot (e, i, _, t) ->

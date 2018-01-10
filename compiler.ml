@@ -63,6 +63,14 @@ let lib =
   jb "_memmove_loop" ++
   ret
 
+let rec compile_l_value_address = function
+  | PIdent ((d,ofs), _) ->
+      reach_depth d ++
+      leaq (ind ~ofs:(8 * ofs) rdi) rax
+  | PDot (e, o, _, _) ->
+      compile_l_value_address e ++
+      addq (imm (8 * o)) (reg rax)
+  | _ -> assert false
 
 let rec compile_expr = function
   | PInt i ->
@@ -88,8 +96,13 @@ let rec compile_expr = function
           pushq (reg r9)
       | Star | Amp | AmpMut -> assert false
       end
-  | PBinop (Equal, e1, e2, _) ->
-      assert false
+  | PAssignement (e1, e2, t) ->
+      compile_l_value_address e1 ++
+      movq (reg rax) (reg r14) ++
+      compile_expr e2 ++
+      memmove (0,rsp) (0,r14) (size_of t) ++
+      popn (size_of t) ++
+      pushq (imm 0)
   | PBinop (And as b, e1, e2, _) | PBinop (Or as b, e1, e2, _) ->
       let _else, _end = register_if () in
       compile_expr e1 ++
