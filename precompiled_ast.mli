@@ -9,7 +9,7 @@ type prec_expr =
   | PIdent of offset * expr_type
   | PUnop of unop_type * prec_expr * expr_type
   | PBinop of binop_type * prec_expr * prec_expr * expr_type
-  | PDot of prec_expr * offset * expr_type
+  | PDot of prec_expr * int * expr_type * expr_type
   | PLen of prec_expr * expr_type
   | PBrackets of prec_expr * prec_expr * expr_type
   | PFunCall of ident * prec_expr list * int * expr_type
@@ -24,7 +24,7 @@ and prec_instr =
   | PEmpty
   | PExpr of prec_expr * expr_type
   | PLet of offset * prec_expr * expr_type
-  | PLetStruct of offset * (int * prec_expr) list * expr_type
+  | PLetStruct of offset * (int * prec_expr * int) list * expr_type
   | PWhile of prec_bloc
   | PReturn of prec_expr option
   | PIf of prec_expr * prec_bloc * prec_bloc * expr_type

@@ -51,7 +51,10 @@ let precompile p =
         PUnop (op, precompile_expr env e, t)
     | TBinop (op, e1, e2, _, t) ->
         PBinop (op, precompile_expr env e1, precompile_expr env e2, t)
-    | TDot (e, i, _, _) -> assert false
+    | TDot (e, i, _, t) ->
+        let s = match Typer.type_of_expr e with
+          | Struct x -> x | _ -> assert false in
+        PDot (precompile_expr env e, get_struct_var_offset s i, Struct s, t)
     | TLen (e, _, _) -> assert false
     | TBrackets (eo, ei, _, _) -> assert false
     | TFunCall ((f,_), el, _, t) ->
@@ -98,7 +101,9 @@ let precompile p =
     | TLetStruct (_, (i, _), (s, _), vars, _, _) ->
         let t = Struct s in
         let compile_var (i, _, e) =
-            (get_struct_var_offset s i, precompile_expr env e) in
+            (get_struct_var_offset s i,
+             precompile_expr env e,
+             size_of (Typer.type_of_expr e)) in
         let pvars = List.map compile_var vars in
         let _env = add_var i (size_of t) env in
         PLetStruct (get_var i _env, pvars, t), _env

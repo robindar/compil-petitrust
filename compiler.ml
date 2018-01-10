@@ -117,7 +117,11 @@ let rec compile_expr = function
       | Or  -> orq (reg rbx) (reg rax)
       | Equal -> assert false
       end ++ pushq (reg rax)
-  | PDot (e, (d,o), t) -> assert false
+  | PDot (e, o, s, t) ->
+      compile_expr e ++
+      memmove (o,rsp) (size_of s - size_of t,rsp) (size_of t) ++
+      pushn (size_of t) ++
+      popn (size_of s)
   | PLen (e, t) -> assert false
   | PBrackets (eo, ei, t) -> assert false
   | PFunCall (f, el, arg_size, t) ->
@@ -163,9 +167,9 @@ and compile_instr = function
       memmove (0,rsp) (i,rbp) t ++
       popn t
   | PLetStruct ((_,ofs), vars, t) ->
-      let compile_var (i, e) =
+      let compile_var (i, e, s) =
         compile_expr e ++
-        memmove (0, rsp) (ofs + i, rbp) (size_of t) in
+        memmove (0, rsp) (ofs + i, rbp) s in
       List.fold_left (++) nop (List.map compile_var vars) ++
       popn (size_of t)
   | PWhile _ -> assert false
