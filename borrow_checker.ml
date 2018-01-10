@@ -35,7 +35,8 @@ let merge_status (a1,b1,c1) (a2,b2,c2) =
 
 let rec extract_ident = function
   | TIdent (i, _, _) -> i
-  | TDot (e, i, _, _) -> (extract_ident e) ^ "." ^ i
+  | TDot (e, i, _, _) -> extract_ident e
+  | TBrackets (e, _, _, _) -> extract_ident e
   | _ -> raise Not_found
 
 let is_moved_expr set e =
@@ -141,22 +142,13 @@ let rec move_expr set e =
              move set (extract_ident e)
            else set
   with Not_found -> set
-let unmove_expr set e =
-  try
-    unmove set (extract_ident e)
-  with Not_found -> set
-let rec borrow_expr set e =
-  check_borrowable_expr set e;
-  try match e with
-  | TBrackets (te,_,_,_) -> borrow_expr set te
-  | _ -> borrow set (extract_ident e)
-  with Not_found -> set
-let rec mutborrow_expr set e =
-  check_mutborrowable_expr set e;
-  try match e with
-  | TBrackets (te,_,_,_) -> borrow_expr set te
-  | _ -> mutborrow set (extract_ident e)
-  with Not_found -> set
+
+let _act_expr checker f set e =
+  checker set e;
+  try f set (extract_ident e) with Not_found -> set
+let unmove_expr = _act_expr (fun _ _ -> ()) unmove
+let borrow_expr = _act_expr check_borrowable_expr borrow
+let mutborrow_expr = _act_expr check_mutborrowable_expr mutborrow
 
 
 let borrow_check_file file =
