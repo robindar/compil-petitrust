@@ -33,7 +33,7 @@ let memmove (f,fr) (t,tr) s =
 (* extended push *)
 let epush (f,fr) size =
   pushn size ++
-  memmove (f,fr) (size-1,rsp) size
+  memmove (f,fr) (0,rsp) size
 
 let size_of = Precompiler.size_of
 
@@ -145,7 +145,7 @@ and compile_bloc (instr, expr, vars_size, t) =
       else pushq (imm 0)
     | Some e -> compile_expr e
   end ++
-  memmove (size_of t - 1, rsp) (size_of t, rbp) (size_of t) ++
+  memmove (0, rsp) (1, rbp) (size_of t) ++
   popn (size_of t) ++
   (if vars_size > 0 then
     popn vars_size
@@ -160,7 +160,7 @@ and compile_instr = function
   | PLet ((_,i), e, t) ->
       let t = size_of t in
       compile_expr e ++
-      memmove (t-1,rsp) (i,rbp) t ++
+      memmove (0,rsp) (i,rbp) t ++
       popn t
   | PLetStruct _ -> assert false
   | PWhile _ -> assert false
@@ -183,7 +183,7 @@ let compile_decl = function
   | PDeclFun (f, bloc, arg_size, t) ->
       label f ++
       compile_bloc bloc ++
-      memmove (size_of t - 1, rsp) (size_of t + 1 + arg_size, rsp) (size_of t) ++
+      memmove (0, rsp) (2 + arg_size, rsp) (size_of t) ++
       popn (size_of t) ++
       ret
 
