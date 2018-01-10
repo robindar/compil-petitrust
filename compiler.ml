@@ -80,6 +80,8 @@ let rec compile_expr = function
   | PIdent ((d,ofs), ty) ->
       reach_depth d ++
       epush (ofs,rdi) (size_of ty)
+  | PUnop (Minus, PInt i, _) ->
+      pushq (imm (-i))
   | PUnop (op, e, _) ->
       compile_expr e ++
       begin match op with
