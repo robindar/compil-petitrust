@@ -49,14 +49,14 @@ let precompile p =
     | TBloc (b, _, _) -> PBloc (precompile_bloc env b)
   and precompile_decl env = function
     | TDeclStruct _ -> assert false
-    | TDeclFun ((f,_), arg, _, bloc, _, _) ->
-        let pos = ref 1 in
+    | TDeclFun ((f,_), arg, _, bloc, _, ty) ->
+        let pos = ref 2 in
         let process_arg _env (_, i, _, t) =
           pos := !pos + (size_of t);
           add_arg i !pos _env in
         let _env = List.fold_left process_arg env arg in
         let pbloc = precompile_bloc _env bloc in
-        PDeclFun (f, pbloc), env
+        PDeclFun (f, pbloc, !pos - 2, ty), env
   and precompile_bloc env (instr, expr, _, t) =
     let pinstr, _env = List.fold_left
       (fun (l,_env) i -> let pi, n_env = precompile_instr _env i in (pi::l, n_env))

@@ -20,7 +20,7 @@ and prec_decl =
   | PDeclStruct of (ident * location)
                    * (ident * location * expr_type) list
                    * location * expr_type
-  | PDeclFun of ident * prec_bloc
+  | PDeclFun of ident * prec_bloc * int * expr_type
 and prec_bloc = prec_instr list * prec_expr option * int * expr_type
 and prec_instr =
   | PEmpty
