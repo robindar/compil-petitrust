@@ -90,6 +90,17 @@ let rec compile_expr = function
       end
   | PBinop (Equal, e1, e2, _) ->
       assert false
+  | PBinop (And as b, e1, e2, _) | PBinop (Or as b, e1, e2, _) ->
+      let _else, _end = register_if () in
+      compile_expr e1 ++
+      popq rbx ++
+      testq (reg rbx) (reg rbx) ++
+      (match b with | And -> jz | Or -> jnz | _ -> assert false) _else ++
+      compile_expr e2 ++
+      jmp _end ++
+      label _else ++
+      pushq (reg rbx) ++
+      label _end
   | PBinop (op, e1, e2, _) ->
       let compare setter =
         movq (imm 0) (reg r9) ++
@@ -113,9 +124,7 @@ let rec compile_expr = function
       | Leq -> compare setle
       | Gt  -> compare setg
       | Lt  -> compare setl
-      | And -> andq (reg rbx) (reg rax)
-      | Or  -> orq (reg rbx) (reg rax)
-      | Equal -> assert false
+      | And | Or | Equal -> assert false
       end ++ pushq (reg rax)
   | PDot (e, o, s, t) ->
       compile_expr e ++
