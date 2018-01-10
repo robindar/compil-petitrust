@@ -59,8 +59,8 @@ let lib =
   movq (ind ~index:rcx ~scale:8 rsi) (reg r15) ++
   movq (reg r15) (ind ~index:rcx ~scale:8 rdi) ++
   incq (reg rcx) ++
-  cmpq (reg rcx) (reg rdx) ++
-  jl "_memmove_loop" ++
+  cmpq (reg rdx) (reg rcx) ++
+  jb "_memmove_loop" ++
   ret
 
 
