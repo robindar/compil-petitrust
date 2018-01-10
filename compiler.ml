@@ -13,11 +13,15 @@ let register_data str =
   data_seg := label id ++ string str ++ !data_seg;
   id
 
-let if_count = ref (-1)
+let data_count = ref (-1)
 let register_if () =
-  if_count := !if_count + 1;
-  let s = string_of_int !if_count in
-  ("_else_" ^ s, "_end_" ^ s)
+  data_count := !data_count + 1;
+  let s = string_of_int !data_count in
+  ("_else_" ^ s, "_endif_" ^ s)
+let register_while () =
+  data_count := !data_count + 1;
+  let s = string_of_int !data_count in
+  ("_while_" ^ s, "_endwhile_" ^ s)
 
 let pushn size =
   subq (imm (size * 8)) (reg rsp)
@@ -196,7 +200,17 @@ and compile_instr = function
         memmove (0, rsp) (ofs + i, rbp) s in
       List.fold_left (++) nop (List.map compile_var vars) ++
       popn (size_of t)
-  | PWhile _ -> assert false
+  | PWhile (c, b) ->
+      let _cond, _end = register_while () in
+      label _cond ++
+      compile_expr c ++
+      popq rax ++
+      testq (reg rax) (reg rax) ++
+      jz _end ++
+      compile_bloc b ++
+      popn 1 ++
+      jmp _cond ++
+      label _end
   | PIf (c, t, e, ty) ->
       let _else, _end = register_if () in
       compile_expr c ++

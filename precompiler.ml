@@ -111,7 +111,8 @@ let precompile p =
         let pvars = List.map compile_var vars in
         let _env = add_var i (size_of t) env in
         PLetStruct (get_var i _env, pvars, t), _env
-    | TWhile (c, b, _, _) -> assert false
+    | TWhile (c, b, _, _) ->
+        PWhile (precompile_expr env c, precompile_bloc env b), env
     | TReturn (eo, _, _) -> assert false
     | TIf (c, t, e, _, ty) ->
         PIf(precompile_expr env c,

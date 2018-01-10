@@ -26,7 +26,7 @@ and prec_instr =
   | PExpr of prec_expr * expr_type
   | PLet of offset * prec_expr * expr_type
   | PLetStruct of offset * (int * prec_expr * int) list * expr_type
-  | PWhile of prec_bloc
+  | PWhile of prec_expr * prec_bloc
   | PReturn of prec_expr option
   | PIf of prec_expr * prec_bloc * prec_bloc * expr_type
 
