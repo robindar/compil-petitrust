@@ -6,8 +6,23 @@ module CompileEnv = Map.Make(String)
 let empty_env = (0, CompileEnv.empty, 1)
 
 (* size of type in bytes *)
+let struct_data = ref CompileEnv.empty
+
+let add_struct s data =
+  struct_data := CompileEnv.add s data !struct_data
+
+let get_struct_data s =
+  CompileEnv.find s !struct_data
+let get_struct_size s =
+  fst (get_struct_data s)
+let get_struct_vars s =
+  snd (get_struct_data s)
+let get_struct_var_offset s v =
+  CompileEnv.find v (get_struct_vars s)
+
 let size_of = function
   | Unit | Int32 | Boolean -> 1
+  | Struct s -> get_struct_size s
   | _ -> assert false
 
 let get_depth (d,_,_) = d
@@ -15,7 +30,7 @@ let get_depth (d,_,_) = d
 let get_var i (_,env,_) = CompileEnv.find i env
 let get_next_offset (_,_,n) = n
 let add_var i size (d, env, n) =
-  (d, CompileEnv.add i (d,-n) env, n + size)
+  (d, CompileEnv.add i (d,-(n + size - 1)) env, n + size)
 let add_arg i ofs (d, env, n) =
   (d, CompileEnv.add i (d+1,ofs) env, n)
 let dig (d, env, _) = (d + 1, env, 1)
@@ -48,7 +63,15 @@ let precompile p =
     | TPrint (s, _, _) -> PPrint s
     | TBloc (b, _, _) -> PBloc (precompile_bloc env b)
   and precompile_decl env = function
-    | TDeclStruct _ -> assert false
+    | TDeclStruct ((s,_), vars, _, t) ->
+        let c = ref 0 in
+        let process_var env (i, _, ty) =
+          let n_env = CompileEnv.add i !c env in
+          c := !c + (size_of ty);
+          n_env in
+        let s_data = List.fold_left process_var CompileEnv.empty vars in
+        add_struct s (!c, s_data);
+        PDeclStruct, env
     | TDeclFun ((f,_), arg, _, bloc, _, ty) ->
         let pos = ref 2 in
         let process_arg _env (_, i, _, t) =
@@ -68,10 +91,17 @@ let precompile p =
   and precompile_instr env = function
     | TEmpty _ -> PEmpty, env
     | TExpr (e, _, t) -> PExpr (precompile_expr env e, t), env
-    | TLet (_, (i,_), e, _, t) ->
+    | TLet (_, (i,_), e, _, _) ->
+        let t = Typer.type_of_expr e in
         let _env = (add_var i (size_of t) env) in
         PLet (get_var i _env, precompile_expr env e, t), _env
-    | TLetStruct (_, (i, _), (s, _), vars, _, _) -> assert false
+    | TLetStruct (_, (i, _), (s, _), vars, _, _) ->
+        let t = Struct s in
+        let compile_var (i, _, e) =
+            (get_struct_var_offset s i, precompile_expr env e) in
+        let pvars = List.map compile_var vars in
+        let _env = add_var i (size_of t) env in
+        PLetStruct (get_var i _env, pvars, t), _env
     | TWhile (c, b, _, _) -> assert false
     | TReturn (eo, _, _) -> assert false
     | TIf (c, t, e, _, ty) ->

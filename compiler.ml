@@ -162,7 +162,12 @@ and compile_instr = function
       compile_expr e ++
       memmove (0,rsp) (i,rbp) t ++
       popn t
-  | PLetStruct _ -> assert false
+  | PLetStruct ((_,ofs), vars, t) ->
+      let compile_var (i, e) =
+        compile_expr e ++
+        memmove (0, rsp) (ofs + i, rbp) (size_of t) in
+      List.fold_left (++) nop (List.map compile_var vars) ++
+      popn (size_of t)
   | PWhile _ -> assert false
   | PIf (c, t, e, ty) ->
       let _else, _end = register_if () in
@@ -179,7 +184,7 @@ and compile_instr = function
   | _ -> assert false
 
 let compile_decl = function
-  | PDeclStruct _ -> assert false
+  | PDeclStruct -> nop
   | PDeclFun (f, bloc, arg_size, t) ->
       label f ++
       compile_bloc bloc ++
